@@ -16,7 +16,7 @@ public class ListViewAdapter extends BaseAdapter {
     ArrayList<HashMap<String, String>> mEntries;
     Context mContext;
 
-    public ListViewAdapter (Context context) {
+    public ListViewAdapter(Context context) {
         mContext = context;
         mEntries = new ArrayList<>();
     }
@@ -50,11 +50,17 @@ public class ListViewAdapter extends BaseAdapter {
         }
         TextView month = (TextView) convertView.findViewById(R.id.tv_month);
         TextView day = (TextView) convertView.findViewById(R.id.tv_day);
+        TextView user = (TextView) convertView.findViewById(R.id.tv_user);
+        TextView editDate = (TextView) convertView.findViewById(R.id.tv_edit_date);
+        TextView total = (TextView) convertView.findViewById(R.id.tv_total);
 
-        String date = mEntries.get(position).get("date");
-        month.setText(Constants.convertMonth[Integer.parseInt(date.substring(5,7))]);
+        HashMap<String, String> entry = mEntries.get(position);
+        String date = entry.get("date");
+        month.setText(Constants.convertMonth[Integer.parseInt(date.substring(5, 7))]);
         day.setText(date.substring(8));
-
+        user.setText(entry.get("user_id"));
+        editDate.setText("On " + entry.get("edited_time"));
+        total.setText(entry.get("total"));
 
         return convertView;
     }
