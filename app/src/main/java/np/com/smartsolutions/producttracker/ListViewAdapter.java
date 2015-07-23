@@ -44,9 +44,7 @@ public class ListViewAdapter extends BaseAdapter {
     @Override
     public View getView(int position, View convertView, ViewGroup parent) {
         if (convertView == null) {
-            LayoutInflater inflater = (LayoutInflater) mContext
-                    .getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-            convertView = inflater.inflate(R.layout.list_item, null);
+            convertView = View.inflate(mContext, R.layout.list_item, null);
         }
         TextView month = (TextView) convertView.findViewById(R.id.tv_month);
         TextView day = (TextView) convertView.findViewById(R.id.tv_day);

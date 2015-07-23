@@ -7,6 +7,7 @@ import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
+import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AlertDialog;
@@ -46,6 +47,7 @@ public class MainActivity extends AppCompatActivity {
     ListViewAdapter mAdapter;
     ArrayList<HashMap<String, String>> mEntries;
     SwipeRefreshLayout mSwipeRefresh;
+    FloatingActionButton mAddFAB;
 
 
     @Override
@@ -78,12 +80,25 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        mAddFAB = (FloatingActionButton) findViewById(R.id.myFAB);
+        mAddFAB.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if(ServiceHandler.isOnline(MainActivity.this)){
+                    Intent intent = new Intent(MainActivity.this, AddEntryActivity.class);
+                    startActivity(intent);
+                } else
+                    noConnectionAlert();
+            }
+        });
+
+
+        new GetEntries().execute();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        new GetEntries().execute();
 
     }
 
@@ -208,11 +223,7 @@ public class MainActivity extends AppCompatActivity {
             super.onPreExecute();
             mSwipeRefresh.setRefreshing(true);
             if (!ServiceHandler.isOnline(MainActivity.this)) {
-                new AlertDialog.Builder(MainActivity.this)
-                        .setTitle("No Connection Detected")
-                        .setMessage("Please check your internet connection and try again.")
-                        .setPositiveButton("OK", null)
-                        .show();
+                noConnectionAlert();
                 this.cancel(true);
             }
         }
@@ -252,27 +263,39 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void noConnectionAlert() {
+        new AlertDialog.Builder(MainActivity.this)
+                .setTitle("No Connection Detected")
+                .setMessage("Please check your internet connection and try again.")
+                .setPositiveButton("OK", null)
+                .show();
+    }
+
     @NonNull
     public static ArrayList<HashMap<String, String>> parseJsonEntries(Context context, String response)
             throws JSONException {
         // Parse json data
         JSONObject jsonObject = new JSONObject(response);
         // Get products list
-        JSONArray jsonProducts = jsonObject.getJSONArray("products");
-        Set<String> products = new HashSet<>();
+        JSONArray jsonProducts = jsonObject.getJSONArray(Constants.JSON_CLASS_PRODUCTS);
+        ArrayList<String> products = new ArrayList<>();
         for (int i = 0; i < jsonProducts.length(); i++) {
             products.add(jsonProducts.getString(i));
         }
         // Save products
         SharedPreferences.Editor editor = context.getSharedPreferences(Constants.COLUMN_PREFS, 0).edit();
-        editor.putStringSet(Constants.KEY_PRODUCTS, products);
+        editor.putInt(Constants.NUM_PRODUCTS, products.size());
+        for (int i = 0; i < products.size(); i++)
+            editor.putString("" + i, products.get(i));
+        editor.apply();
+
         // Add other columns
         String[] cols = {"user_id", "date", "edited_time", "total"};
         products.addAll(Arrays.asList(cols));
-        editor.apply();
+
         // Get entries
         ArrayList<HashMap<String, String>> entries = new ArrayList<>();
-        JSONArray jsonEntries = jsonObject.getJSONArray("entries");
+        JSONArray jsonEntries = jsonObject.getJSONArray(Constants.JSON_CLASS_ENTRIES);
         int numEntries = jsonEntries.length();
         for (int i = 0; i < numEntries; i++) {
             JSONObject object = (JSONObject) jsonEntries.get(i);

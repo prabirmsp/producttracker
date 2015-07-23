@@ -15,20 +15,20 @@
         <TextView
             android:id="@+id/tv_month"
             android:layout_width="match_parent"
-            android:layout_height="18dp"
+            android:layout_height="14dp"
             android:layout_margin="4dp"
             android:background="@color/text_white"
             android:gravity="center"
             android:text="JAN"
             android:textColor="@color/primary_dark"
-            android:textSize="14sp"
+            android:textSize="12sp"
             android:textStyle="bold" />
 
         <TextView
             android:id="@+id/tv_day"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
+            android:layout_marginTop="16dp"
             android:gravity="center_horizontal"
             android:text="25"
             android:textColor="@color/text_white"
