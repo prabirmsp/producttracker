@@ -9,6 +9,7 @@ import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.util.TypedValue;
 import android.view.View;
 import android.widget.ListView;
 
@@ -34,8 +35,13 @@ public class DateRangeActivity extends AppCompatActivity {
         mSwipeRefresh = (SwipeRefreshLayout) findViewById(R.id.swipeRefreshLayout);
         mSwipeRefresh.setEnabled(false);
         mSwipeRefresh.setColorSchemeResources(R.color.primary);
+        // fix setRefreshing(true)
+        mSwipeRefresh.setProgressViewOffset(false,
+                (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, -48, getResources().getDisplayMetrics()),
+                (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 16, getResources().getDisplayMetrics()));
         mListView = (ListView) findViewById(R.id.list_view);
         mAdapter = new ListViewAdapter(this);
+        mListView.setAdapter(mAdapter);
         onNewIntent(getIntent());
     }
 

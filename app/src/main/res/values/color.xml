@@ -2,7 +2,7 @@
 <resources>
     <color name="primary">#607D8B</color>
     <color name="primary_dark">#455A64</color>
-    <color name="primary_highlight">#F44336</color>
+    <color name="primary_highlight">#D32F2F</color>
     <color name="primary_highlight_pink">#E2014D</color>
     <color name="transparent">#00000000</color>
     <color name="text_dark">#494949</color>

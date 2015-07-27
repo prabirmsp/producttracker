@@ -1,14 +1,18 @@
 package np.com.smartsolutions.producttracker;
 
 import android.app.Dialog;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
+import android.support.v4.content.LocalBroadcastManager;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
@@ -21,7 +25,10 @@ import android.view.View;
 import android.view.Window;
 import android.widget.AdapterView;
 import android.widget.ListView;
+import android.widget.Toast;
 
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.GooglePlayServicesUtil;
 import com.squareup.timessquare.CalendarPickerView;
 
 import org.json.JSONArray;
@@ -35,20 +42,24 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
+
+import np.com.smartsolutions.producttracker.gcm.RegistrationIntentService;
 
 public class MainActivity extends AppCompatActivity {
 
     public static final String TAG = MainActivity.class.getSimpleName();
+    private static final int PLAY_SERVICES_RESOLUTION_REQUEST = 9000;
 
     ListView mListView;
     ListViewAdapter mAdapter;
     ArrayList<HashMap<String, String>> mEntries;
     SwipeRefreshLayout mSwipeRefresh;
     FloatingActionButton mAddFAB;
+    Boolean firstLoad;
 
+    // For notifications
+    private BroadcastReceiver mRegistrationBroadcastReceiver;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -84,7 +95,7 @@ public class MainActivity extends AppCompatActivity {
         mAddFAB.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if(ServiceHandler.isOnline(MainActivity.this)){
+                if (ServiceHandler.isOnline(MainActivity.this)) {
                     Intent intent = new Intent(MainActivity.this, AddEntryActivity.class);
                     startActivity(intent);
                 } else
@@ -92,20 +103,54 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        mRegistrationBroadcastReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                SharedPreferences sharedPreferences =
+                        PreferenceManager.getDefaultSharedPreferences(context);
+                boolean sentToken = sharedPreferences
+                        .getBoolean(Constants.SENT_TOKEN_TO_SERVER, false);
+                if (sentToken) {
+                    Log.d(TAG, "Token recieved and sent to server. GCM can be used.");
+                } else {
+                    Toast.makeText(MainActivity.this, "An error occurred while connecting to Google Play. Notifications will not work.", Toast.LENGTH_LONG).show();
+                }
+            }
+        };
+
+        if (checkPlayServices()) {
+            // Start IntentService to register this application with GCM.
+            Intent intent = new Intent(this, RegistrationIntentService.class);
+            startService(intent);
+        }
 
         new GetEntries().execute();
+        firstLoad = true;
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+        LocalBroadcastManager.getInstance(this).registerReceiver(mRegistrationBroadcastReceiver,
+                new IntentFilter(Constants.REGISTRATION_COMPLETE));
 
+    }
+
+    @Override
+    protected void onPause() {
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(mRegistrationBroadcastReceiver);
+        super.onPause();
     }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_main, menu);
+        int menu_id;
+        if (new UserHandler(this).isAdmin())
+            menu_id = R.menu.menu_main_admin;
+        else
+            menu_id = R.menu.menu_main;
+        getMenuInflater().inflate(menu_id, menu);
         return true;
     }
 
@@ -117,8 +162,17 @@ public class MainActivity extends AppCompatActivity {
         int id = item.getItemId();
         if (id == R.id.date_range)
             selectDateRange();
+        else if (id == R.id.log_out)
+            logout();
 
         return super.onOptionsItemSelected(item);
+    }
+
+    private void logout() {
+        new UserHandler(this).logout();
+        Intent intent = new Intent(this, LoginActivity.class);
+        startActivity(intent);
+        finish();
     }
 
     private void selectDateRange() {
@@ -157,6 +211,7 @@ public class MainActivity extends AppCompatActivity {
                     intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
                     startActivity(intent);
 
+                    Log.d(TAG, "Start: " + start + ", End: " + end);
                 }
                 dialog.dismiss();
             }
@@ -259,7 +314,9 @@ public class MainActivity extends AppCompatActivity {
             super.onPostExecute(aVoid);
             mAdapter.updateEntries(mEntries);
             mSwipeRefresh.setRefreshing(false);
-            snackbar("Successfully updated.");
+            if (!firstLoad)
+                snackbar("Successfully updated.");
+            firstLoad = !firstLoad;
         }
     }
 
@@ -300,7 +357,7 @@ public class MainActivity extends AppCompatActivity {
         for (int i = 0; i < numEntries; i++) {
             JSONObject object = (JSONObject) jsonEntries.get(i);
             HashMap<String, String> objectMap = new HashMap<>();
-            for (String s: products) {
+            for (String s : products) {
                 objectMap.put(s, object.getString(s));
             }
             entries.add(objectMap);
@@ -313,4 +370,24 @@ public class MainActivity extends AppCompatActivity {
         Snackbar.make(findViewById(R.id.coordinator_layout), messege, Snackbar.LENGTH_LONG).show();
     }
 
+    /**
+     * Check the device to make sure it has the Google Play Services APK. If
+     * it doesn't, display a dialog that allows users to download the APK from
+     * the Google Play Store or enable it in the device's system settings.
+     */
+    private boolean checkPlayServices() {
+        int resultCode = GooglePlayServicesUtil.isGooglePlayServicesAvailable(this);
+        if (resultCode != ConnectionResult.SUCCESS) {
+            if (GooglePlayServicesUtil.isUserRecoverableError(resultCode)) {
+                GooglePlayServicesUtil.getErrorDialog(resultCode, this,
+                        PLAY_SERVICES_RESOLUTION_REQUEST).show();
+            } else {
+                Log.i(TAG, "This device is not supported.");
+                snackbar("Push notifications not supported on this device.");
+                finish();
+            }
+            return false;
+        }
+        return true;
+    }
 }

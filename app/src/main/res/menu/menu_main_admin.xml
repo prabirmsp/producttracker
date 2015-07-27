@@ -8,6 +8,11 @@
         android:title="Dates"
         app:showAsAction="always" />
     <item
+        android:id="@+id/admin"
+        android:icon="@drawable/ic_insert_invitation_white_48dp"
+        android:title="Admin"
+        app:showAsAction="collapseActionView" />
+    <item
         android:id="@+id/log_out"
         android:icon="@drawable/ic_insert_invitation_white_48dp"
         android:title="Log Out"

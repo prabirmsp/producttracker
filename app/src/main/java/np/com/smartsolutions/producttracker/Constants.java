@@ -17,10 +17,17 @@ public final class Constants {
     public static final String ENTRY_ADDED = "ENTRY_ADDED";
     public static final String JSON_CLASS_PRODUCTS = "products";
     public static final String JSON_CLASS_ENTRIES = "entries";
+    public static final String USER_OP = "user_operation";
+    public static final String ERROR = "ERROR";
+
 
     // SavedPreferences Constants
     public static final String COLUMN_PREFS = "column_prefs";
     public static final String NUM_PRODUCTS = "number_of_products";
+
+    // Notifications
+    public static final String SENT_TOKEN_TO_SERVER = "sent_token";
+    public static final String REGISTRATION_COMPLETE = "reg_complete";
 
     // Calendar
     public static final String[] convertMonth = {

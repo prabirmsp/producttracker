@@ -39,6 +39,9 @@ public class AddEntryActivity extends AppCompatActivity {
     Calendar mSelectedDate;
     DateFormat mLocalFormat;
 
+    ArrayList<String> entries;
+    ArrayList<String> keys;
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -100,8 +103,8 @@ public class AddEntryActivity extends AppCompatActivity {
     private void addButtonClicked() {
         if (ServiceHandler.isOnline(this)) {
             // Get all values entered
-            ArrayList<String> entries = mAdapter.getEntries();
-            ArrayList<String> keys = mProducts;
+            entries = mAdapter.getEntries();
+            keys = mProducts;
             for (int i = 0; i < entries.size(); i++)
                 if (entries.get(i).equals(""))
                     entries.set(i, "0");
@@ -112,12 +115,17 @@ public class AddEntryActivity extends AppCompatActivity {
             entries.add(serverFormat.format(new Date(mSelectedDate.getTimeInMillis())));
 
             // Add username
-            keys.add("user-id");
-            entries.add("app-user");
+            keys.add("user_id");
+            UserHandler userHandler = new UserHandler(this);
+            entries.add(userHandler.getName());
+
+            // Add unique_id
+            keys.add("user_unique_id");
+            entries.add(userHandler.getUid());
 
             // param[0] is products list
             // param[1] is entries list
-            new SubmitEntryToAdd().execute(keys, entries);
+            new SubmitEntryToAdd().execute();
             finish();
         } else {
             new AlertDialog.Builder(this)
@@ -135,15 +143,22 @@ public class AddEntryActivity extends AppCompatActivity {
                 new DatePickerDialog.OnDateSetListener() {
                     @Override
                     public void onDateSet(DatePicker view, int year, int monthOfYear, int dayOfMonth) {
-                        mSelectedDate.set(year, monthOfYear, dayOfMonth);
-                        mDateButton.setText(mLocalFormat.format(new Date(mSelectedDate.getTimeInMillis())));
+                        Calendar today = Calendar.getInstance();
+                        Calendar selected = Calendar.getInstance();
+                        selected.set(year, monthOfYear, dayOfMonth);
+                        if (selected.after(today))
+                            Toast.makeText(AddEntryActivity.this, "You cannot pick a date in the future.", Toast.LENGTH_LONG).show();
+                        else {
+                            mSelectedDate.set(year, monthOfYear, dayOfMonth);
+                            mDateButton.setText(mLocalFormat.format(new Date(mSelectedDate.getTimeInMillis())));
+                        }
                     }
                 },
                 mSelectedDate.get(Calendar.YEAR), mSelectedDate.get(Calendar.MONTH), mSelectedDate.get(Calendar.DAY_OF_MONTH));
         dialog.show();
     }
 
-    public class SubmitEntryToAdd extends AsyncTask<ArrayList<String>, Void, Void> {
+    public class SubmitEntryToAdd extends AsyncTask<Void, Void, Void> {
 
         @Override
         protected void onPreExecute() {
@@ -152,13 +167,13 @@ public class AddEntryActivity extends AppCompatActivity {
         }
 
         @Override
-        protected Void doInBackground(ArrayList<String>... params) {
+        protected Void doInBackground(Void... params) {
             String response = "";
             // Get json from server
             try {
                 JSONObject jsonObject = new JSONObject();
-                jsonObject.put(Constants.JSON_CLASS_PRODUCTS, new JSONArray(params[0]));
-                jsonObject.put(Constants.JSON_CLASS_ENTRIES, new JSONArray(params[1]));
+                jsonObject.put(Constants.JSON_CLASS_PRODUCTS, new JSONArray(keys));
+                jsonObject.put(Constants.JSON_CLASS_ENTRIES, new JSONArray(entries));
                 String jsonString = jsonObject.toString();
                 Log.d(TAG, "Sending JSON: " + jsonString);
 
@@ -172,7 +187,7 @@ public class AddEntryActivity extends AppCompatActivity {
                 e.printStackTrace();
                 this.cancel(true);
             } finally {
-                if (!(response.equals(Constants.ENTRY_ADDED)))
+                if (!(response.contains(Constants.ENTRY_ADDED)))
                     this.cancel(true);
             }
             return null;

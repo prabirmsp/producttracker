@@ -9,15 +9,15 @@
         android:id="@+id/ll_date"
         android:layout_width="56sp"
         android:layout_height="wrap_content"
-        android:background="@color/primary"
+        android:background="@drawable/calendar_primary_bg"
         android:orientation="vertical">
 
         <TextView
             android:id="@+id/tv_month"
             android:layout_width="match_parent"
-            android:layout_height="14dp"
+            android:layout_height="16dp"
             android:layout_margin="4dp"
-            android:background="@color/text_white"
+            android:background="@drawable/calendar_white_bg"
             android:gravity="center"
             android:text="JAN"
             android:textColor="@color/primary_dark"
