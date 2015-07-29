@@ -2,6 +2,7 @@ package np.com.smartsolutions.producttracker;
 
 
 import android.app.DatePickerDialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.AsyncTask;
@@ -11,7 +12,11 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.Window;
 import android.widget.Button;
 import android.widget.DatePicker;
 import android.widget.Toast;
@@ -34,8 +39,6 @@ public class AddEntryActivity extends AppCompatActivity {
     RecyclerView mRecyclerView;
     AddRecyclerViewAdapter mAdapter;
     ArrayList<String> mProducts;
-    Button mAddButton;
-    Button mCancelButton;
     Calendar mSelectedDate;
     DateFormat mLocalFormat;
 
@@ -46,20 +49,12 @@ public class AddEntryActivity extends AppCompatActivity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.add_entry_dialog);
+        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
         mDateButton = (Button) findViewById(R.id.button_date);
-        mAddButton = (Button) findViewById(R.id.button_add);
-        mCancelButton = (Button) findViewById(R.id.button_cancel);
         mRecyclerView = (RecyclerView) findViewById(R.id.recycler_view);
         LinearLayoutManager llm = new LinearLayoutManager(this);
         mRecyclerView.setLayoutManager(llm);
-
-        mCancelButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                finish();
-            }
-        });
 
         onNewIntent(getIntent());
 
@@ -90,14 +85,6 @@ public class AddEntryActivity extends AppCompatActivity {
                 showDatePicker();
             }
         });
-        mAddButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                addButtonClicked();
-            }
-        });
-
-
     }
 
     private void addButtonClicked() {
@@ -156,6 +143,45 @@ public class AddEntryActivity extends AppCompatActivity {
                 },
                 mSelectedDate.get(Calendar.YEAR), mSelectedDate.get(Calendar.MONTH), mSelectedDate.get(Calendar.DAY_OF_MONTH));
         dialog.show();
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.menu_add_entry, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        int id = item.getItemId();
+        if (id == android.R.id.home) {
+            goBack();
+            return true;
+        } else if (id == R.id.add) {
+            addButtonClicked();
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
+
+    }
+
+    @Override
+    public void onBackPressed() {
+        goBack();
+    }
+
+    private void goBack() {
+        new AlertDialog.Builder(this)
+                .setTitle("Leave Page?")
+                .setMessage("Are you sure you want cancel adding this entry?")
+                .setPositiveButton("YES", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        finish();
+                    }
+                })
+                .setNegativeButton("NO", null)
+                .show();
     }
 
     public class SubmitEntryToAdd extends AsyncTask<Void, Void, Void> {

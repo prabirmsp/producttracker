@@ -12,23 +12,30 @@ import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
+import android.support.design.widget.TextInputLayout;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.Window;
-import android.widget.AdapterView;
-import android.widget.ListView;
+import android.widget.EditText;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesUtil;
+import com.jjoe64.graphview.series.DataPoint;
 import com.squareup.timessquare.CalendarPickerView;
 
 import org.json.JSONArray;
@@ -36,6 +43,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.text.DateFormat;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -51,12 +59,13 @@ public class MainActivity extends AppCompatActivity {
     public static final String TAG = MainActivity.class.getSimpleName();
     private static final int PLAY_SERVICES_RESOLUTION_REQUEST = 9000;
 
-    ListView mListView;
-    ListViewAdapter mAdapter;
-    ArrayList<HashMap<String, String>> mEntries;
+    RecyclerView mRecyclerView;
+    EntriesRecyclerViewAdapter mAdapter;
+    ArrayList<EntriesRecyclerViewAdapter.EntriesRecyclerItem> mEntries;
     SwipeRefreshLayout mSwipeRefresh;
     FloatingActionButton mAddFAB;
     Boolean firstLoad;
+    View mFillerNothingHere;
 
     // For notifications
     private BroadcastReceiver mRegistrationBroadcastReceiver;
@@ -66,15 +75,11 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        mListView = (ListView) findViewById(R.id.list_view);
-        mAdapter = new ListViewAdapter(this);
-        mListView.setAdapter(mAdapter);
-        mListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+        mRecyclerView = (RecyclerView) findViewById(R.id.recycler_view);
+        mRecyclerView.setLayoutManager(new LinearLayoutManager(this));
+        mAdapter = new EntriesRecyclerViewAdapter(this);
+        mRecyclerView.setAdapter(mAdapter);
 
-            }
-        });
 
         mEntries = new ArrayList<>();
         mSwipeRefresh = (SwipeRefreshLayout) findViewById(R.id.swipeRefreshLayout);
@@ -118,6 +123,9 @@ public class MainActivity extends AppCompatActivity {
             }
         };
 
+        mFillerNothingHere = findViewById(R.id.ll_filler);
+        mFillerNothingHere.setVisibility(View.INVISIBLE);
+
         if (checkPlayServices()) {
             // Start IntentService to register this application with GCM.
             Intent intent = new Intent(this, RegistrationIntentService.class);
@@ -126,6 +134,10 @@ public class MainActivity extends AppCompatActivity {
 
         new GetEntries().execute();
         firstLoad = true;
+    }
+
+    public void addGraph() {
+
     }
 
     @Override
@@ -162,10 +174,137 @@ public class MainActivity extends AppCompatActivity {
         int id = item.getItemId();
         if (id == R.id.date_range)
             selectDateRange();
+        else if (id == R.id.admin)
+            makeAdmin();
+        else if (id == R.id.add_product)
+            showAddProduct();
+        else if (id == R.id.graph_setting)
+            changeGraphSetting();
         else if (id == R.id.log_out)
             logout();
 
         return super.onOptionsItemSelected(item);
+    }
+
+    private void changeGraphSetting() {
+        final Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        View view = getLayoutInflater().inflate(R.layout.graph_setting_dialog, null);
+        final RadioGroup group = (RadioGroup) view.findViewById(R.id.radio_group);
+        final SharedPreferences graphPrefs = getSharedPreferences(Constants.GRAPH_PREFS, 0);
+
+        // Set initially selected button
+        int selectedView = graphPrefs.getInt(Constants.GRAPH_VIEW, Constants.MONTH);
+        int selectedRadioId;
+        switch (selectedView) {
+            case Constants.ALL:
+                selectedRadioId = R.id.radio_all;
+                break;
+            case Constants.YEAR:
+                selectedRadioId = R.id.radio_year;
+                break;
+            case Constants.WEEK:
+                selectedRadioId = R.id.radio_week;
+                break;
+            case Constants.MONTH:
+            default:
+                selectedRadioId = R.id.radio_month;
+                break;
+        }
+        ((RadioButton) view.findViewById(selectedRadioId)).toggle();
+
+        view.findViewById(R.id.bu_cancel).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                dialog.dismiss();
+            }
+        });
+        view.findViewById(R.id.bu_set).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                SharedPreferences.Editor editor = graphPrefs.edit();
+                int setGraphView;
+                switch (group.getCheckedRadioButtonId()) {
+                    case R.id.radio_all:
+                        setGraphView = Constants.ALL;
+                        break;
+                    case R.id.radio_year:
+                        setGraphView = Constants.YEAR;
+                        break;
+                    case R.id.radio_week:
+                        setGraphView = Constants.WEEK;
+                        break;
+                    case R.id.radio_month:
+                    default:
+                        setGraphView = Constants.MONTH;
+                        break;
+                }
+                editor.putInt(Constants.GRAPH_VIEW, setGraphView);
+                editor.commit();
+                // refresh
+                new GetEntries().execute();
+                dialog.dismiss();
+            }
+        });
+        dialog.setContentView(view);
+        dialog.show();
+
+        dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+
+
+    }
+
+    private void showAddProduct() {
+        final Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        View view = getLayoutInflater().inflate(R.layout.add_admin_dialog, null);
+        final EditText input = (EditText) view.findViewById(R.id.edit_text_email);
+        ((TextInputLayout) view.findViewById(R.id.text_input_layout)).setHint("Product Name");
+        ((TextView) view.findViewById(R.id.title)).setText("Add Product");
+        view.findViewById(R.id.bu_cancel).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                dialog.dismiss();
+            }
+        });
+        view.findViewById(R.id.bu_ok).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                new AddProductAsync(MainActivity.this).execute(input.getText().toString().trim());
+                dialog.dismiss();
+            }
+        });
+        dialog.setContentView(view);
+        dialog.show();
+
+        dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+
+    }
+
+    private void makeAdmin() {
+        final Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        View view = getLayoutInflater().inflate(R.layout.add_admin_dialog, null);
+        final EditText input = (EditText) view.findViewById(R.id.edit_text_email);
+        ((TextInputLayout) view.findViewById(R.id.text_input_layout)).setHint("Email");
+        view.findViewById(R.id.bu_cancel).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                dialog.dismiss();
+            }
+        });
+        view.findViewById(R.id.bu_ok).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                new MakeAdmin().execute(input.getText().toString());
+                dialog.dismiss();
+            }
+        });
+        dialog.setContentView(view);
+        dialog.show();
+
+        dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+
     }
 
     private void logout() {
@@ -221,62 +360,13 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    /**
-     * Using DatePicker
-     **/
-    /*
-    private void selectDateRange() {
-        final Calendar c = Calendar.getInstance();
-        int year = c.get(Calendar.YEAR);
-        final int month = c.get(Calendar.MONTH);
-        int day = c.get(Calendar.DAY_OF_MONTH);
-
-        final DatePickerDialog.OnDateSetListener endListener = new DatePickerDialog.OnDateSetListener() {
-            @Override
-            public void onDateSet(DatePicker view, int year, int monthOfYear, int dayOfMonth) {
-                date2 = Calendar.getInstance();
-                date2.set(year, monthOfYear, dayOfMonth);
-                Calendar now = Calendar.getInstance();
-                if (date2.after(now) || date1.after(now))
-                    new AlertDialog.Builder(MainActivity.this)
-                            .setTitle("Invalid Dates")
-                            .setMessage("Please pick dates from the past.")
-                            .setPositiveButton("OK", null)
-                            .show();
-                else if (date2.before(date1)) {
-                    new AlertDialog.Builder(MainActivity.this)
-                            .setTitle("Invalid Dates")
-                            .setMessage("Start date needs to be before the end date.")
-                            .setPositiveButton("OK", null)
-                            .show();
-                } else {
-                    snackbar("valid");
-                }
-
-
-            }
-        };
-        final DatePickerDialog.OnDateSetListener startListener = new DatePickerDialog.OnDateSetListener() {
-            @Override
-            public void onDateSet(DatePicker view, int year, int monthOfYear, int dayOfMonth) {
-                date1 = Calendar.getInstance();
-                date1.set(year, monthOfYear, dayOfMonth);
-                DatePickerDialog endPicker = new DatePickerDialog(MainActivity.this, endListener, year, monthOfYear, dayOfMonth);
-                endPicker.setTitle("Select End Date");
-                endPicker.show();
-            }
-        };
-        DatePickerDialog datePickerDialog = new DatePickerDialog(this, startListener, year, month, day);
-        datePickerDialog.setTitle("Select Start Date");
-        datePickerDialog.show();
-    } */
-
     private class GetEntries extends AsyncTask<Void, Void, Void> {
 
         @Override
         protected void onPreExecute() {
             super.onPreExecute();
             mSwipeRefresh.setRefreshing(true);
+            mFillerNothingHere.setVisibility(View.INVISIBLE);
             if (!ServiceHandler.isOnline(MainActivity.this)) {
                 noConnectionAlert();
                 this.cancel(true);
@@ -289,12 +379,25 @@ public class MainActivity extends AppCompatActivity {
             // Get json from server
             try {
                 HashMap<String, String> postParams = new HashMap<>();
-                postParams.put(Constants.GET_ENTRIES, "");
+                postParams.put(Constants.GET_ENTRIES, "50");
                 response = ServiceHandler.performPostCall(Constants.URL, postParams);
 
                 Log.d(TAG, "Response: " + response);
 
                 mEntries = parseJsonEntries(MainActivity.this, response);
+                if (mEntries.size() > 1) { // add graph and load the rest of the list
+                    /*
+                    mEntries.add(0, new EntriesRecyclerViewAdapter.EntriesRecyclerItem(EntriesRecyclerViewAdapter.VIEW_GRAPH));
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                       //     mAdapter.updateEntries(mEntries);
+                        }
+                    });
+                    mEntries.get(0).addDataPoints(getDataPoints(mEntries));
+                    */
+                    mEntries.add(0, new EntriesRecyclerViewAdapter.EntriesRecyclerItem(getDataPoints(mEntries)));
+                }
             } catch (Exception e) {
                 e.printStackTrace();
                 this.cancel(true);
@@ -314,6 +417,8 @@ public class MainActivity extends AppCompatActivity {
             super.onPostExecute(aVoid);
             mAdapter.updateEntries(mEntries);
             mSwipeRefresh.setRefreshing(false);
+            if (!(mEntries.size() > 0))
+                mFillerNothingHere.setVisibility(View.VISIBLE);
             if (!firstLoad)
                 snackbar("Successfully updated.");
             firstLoad = !firstLoad;
@@ -329,7 +434,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @NonNull
-    public static ArrayList<HashMap<String, String>> parseJsonEntries(Context context, String response)
+    public static ArrayList<EntriesRecyclerViewAdapter.EntriesRecyclerItem> parseJsonEntries(Context context, String response)
             throws JSONException {
         // Parse json data
         JSONObject jsonObject = new JSONObject(response);
@@ -347,22 +452,91 @@ public class MainActivity extends AppCompatActivity {
         editor.apply();
 
         // Add other columns
-        String[] cols = {"user_id", "date", "edited_time", "total"};
-        products.addAll(Arrays.asList(cols));
+        products.addAll(Arrays.asList(Constants.ADDITIONAL_COLUMNS));
 
         // Get entries
-        ArrayList<HashMap<String, String>> entries = new ArrayList<>();
+        ArrayList<EntriesRecyclerViewAdapter.EntriesRecyclerItem> entries = new ArrayList<>();
         JSONArray jsonEntries = jsonObject.getJSONArray(Constants.JSON_CLASS_ENTRIES);
         int numEntries = jsonEntries.length();
         for (int i = 0; i < numEntries; i++) {
-            JSONObject object = (JSONObject) jsonEntries.get(i);
-            HashMap<String, String> objectMap = new HashMap<>();
-            for (String s : products) {
-                objectMap.put(s, object.getString(s));
-            }
-            entries.add(objectMap);
+            entries.add(
+                    new EntriesRecyclerViewAdapter.EntriesRecyclerItem(
+                            new Entry((JSONObject) jsonEntries.get(i))));
         }
         return entries;
+    }
+
+    public static DataPoint[] getDataPoints(
+            ArrayList<EntriesRecyclerViewAdapter.EntriesRecyclerItem> entries) {
+        DateFormat serverFormat = new SimpleDateFormat("yyyy-MM-dd");
+
+        // Count number of entries
+        int numDataPoints = 0;
+        for (EntriesRecyclerViewAdapter.EntriesRecyclerItem e : entries)
+            if (e.viewType == EntriesRecyclerViewAdapter.VIEW_ENTRY)
+                numDataPoints++;
+        // Declare array
+        DataPoint[] dataPoints = new DataPoint[numDataPoints];
+        Log.d(TAG, "Data points: " + numDataPoints);
+
+        try {
+            int count = 0;
+            for (int i = entries.size() - 1; i >= 0; i--) {
+                EntriesRecyclerViewAdapter.EntriesRecyclerItem entryItem = entries.get(i);
+                if (entryItem.viewType == EntriesRecyclerViewAdapter.VIEW_ENTRY) {
+                    Entry e = entryItem.entry;
+                    dataPoints[count++] = new DataPoint(
+                            serverFormat.parse(e.get("date")),
+                            Integer.parseInt(e.get("total")));
+                }
+            }
+        } catch (JSONException | ParseException e) {
+            e.printStackTrace();
+        }
+        return dataPoints;
+    }
+
+    public class MakeAdmin extends AsyncTask<String, Void, Void> {
+
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+            Toast.makeText(MainActivity.this, "Sending request...", Toast.LENGTH_SHORT).show();
+        }
+
+        @Override
+        protected Void doInBackground(String... params) {
+            String response = "";
+            // Get json from server
+            try {
+                HashMap<String, String> postParams = new HashMap<>();
+                postParams.put(Constants.USER_OP, Constants.MAKE_ADMIN);
+                postParams.put("email", params[0].trim());
+                response = ServiceHandler.performPostCall(Constants.URL, postParams);
+
+                Log.d(TAG, "Response: " + response);
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                this.cancel(true);
+            } finally {
+                if (!(response.contains("Admin added")))
+                    this.cancel(true);
+            }
+            return null;
+        }
+
+        @Override
+        protected void onCancelled() {
+            super.onCancelled();
+            Toast.makeText(MainActivity.this, "Error adding user as admin. Please try again.", Toast.LENGTH_LONG).show();
+        }
+
+        @Override
+        protected void onPostExecute(Void aVoid) {
+            super.onPostExecute(aVoid);
+            Toast.makeText(MainActivity.this, "Admin added successfully!", Toast.LENGTH_LONG).show();
+        }
     }
 
 

@@ -8,6 +8,7 @@
         android:id="@+id/ll_date"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_below="@id/title"
         android:layout_centerHorizontal="true"
         android:layout_margin="16dp"
         android:orientation="horizontal">
@@ -28,47 +29,34 @@
 
     </LinearLayout>
 
-    <TextView
-        android:id="@+id/tv_products_label"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/ll_date"
-        android:layout_marginBottom="8dp"
-        android:gravity="center"
-        android:text="Products"
-        android:textColor="@color/text_dark"
-        android:textSize="16sp" />
-
     <LinearLayout
         android:id="@+id/ll_lv"
         android:layout_width="match_parent"
-        android:layout_height="250dp"
-        android:layout_below="@id/tv_products_label">
+        android:layout_height="match_parent"
+        android:layout_below="@id/ll_date">
 
         <android.support.v7.widget.RecyclerView
             android:id="@+id/recycler_view"
             android:layout_width="match_parent"
-            android:layout_height="250dp" />
+            android:layout_height="match_parent"
+            android:background="@color/text_light"/>
 
     </LinearLayout>
 
     <View
         android:layout_width="match_parent"
         android:layout_height="0.5dp"
-        android:layout_below="@id/tv_products_label"
+        android:layout_below="@id/ll_date"
         android:background="@color/grey" />
 
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="0.5dp"
-        android:layout_below="@id/ll_lv"
-        android:background="@color/grey" />
+    <!--
 
     <LinearLayout
+        android:id="@+id/ll_buttons"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/ll_lv"
-        android:layout_margin="8dp"
+        android:layout_height="64dp"
+        android:layout_alignParentBottom="true"
+        android:padding="8dp"
         android:gravity="end"
         android:orientation="horizontal">
 
@@ -87,4 +75,11 @@
             android:text="ADD"
             android:textColor="@color/primary_dark" />
     </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="0.5dp"
+        android:layout_above="@id/ll_buttons"
+        android:background="@color/grey" />
+        -->
 </RelativeLayout>

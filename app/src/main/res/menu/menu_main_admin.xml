@@ -8,13 +8,19 @@
         android:title="Dates"
         app:showAsAction="always" />
     <item
+        android:id="@+id/add_product"
+        android:title="Add Product..."
+        app:showAsAction="collapseActionView" />
+    <item
         android:id="@+id/admin"
-        android:icon="@drawable/ic_insert_invitation_white_48dp"
-        android:title="Admin"
+        android:title="Make Admin..."
+        app:showAsAction="collapseActionView" />
+    <item
+        android:id="@+id/graph_setting"
+        android:title="Graph Settings"
         app:showAsAction="collapseActionView" />
     <item
         android:id="@+id/log_out"
-        android:icon="@drawable/ic_insert_invitation_white_48dp"
         android:title="Log Out"
         app:showAsAction="collapseActionView" />
 </menu>

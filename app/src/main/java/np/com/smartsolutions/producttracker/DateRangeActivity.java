@@ -8,6 +8,8 @@ import android.support.design.widget.Snackbar;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.View;
@@ -22,9 +24,10 @@ public class DateRangeActivity extends AppCompatActivity {
     public static final String KEY_DATE1 = "date1";
     public static final String KEY_DATE2 = "date2";
 
-    ListView mListView;
-    ListViewAdapter mAdapter;
+    RecyclerView mRecyclerView;
+    EntriesRecyclerViewAdapter mAdapter;
     SwipeRefreshLayout mSwipeRefresh;
+    ArrayList<EntriesRecyclerViewAdapter.EntriesRecyclerItem> mEntries;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -39,9 +42,10 @@ public class DateRangeActivity extends AppCompatActivity {
         mSwipeRefresh.setProgressViewOffset(false,
                 (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, -48, getResources().getDisplayMetrics()),
                 (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 16, getResources().getDisplayMetrics()));
-        mListView = (ListView) findViewById(R.id.list_view);
-        mAdapter = new ListViewAdapter(this);
-        mListView.setAdapter(mAdapter);
+        mRecyclerView = (RecyclerView) findViewById(R.id.recycler_view);
+        mRecyclerView.setLayoutManager(new LinearLayoutManager(this));
+        mAdapter = new EntriesRecyclerViewAdapter(this);
+        mRecyclerView.setAdapter(mAdapter);
         onNewIntent(getIntent());
     }
 
@@ -55,7 +59,7 @@ public class DateRangeActivity extends AppCompatActivity {
         super.onNewIntent(intent);
     }
 
-    public class GetSelectedEntries extends AsyncTask<String, Void, ArrayList<HashMap<String, String>>> {
+    public class GetSelectedEntries extends AsyncTask<String, Void, Void> {
         @Override
         protected void onPreExecute() {
             super.onPreExecute();
@@ -71,9 +75,8 @@ public class DateRangeActivity extends AppCompatActivity {
         }
 
         @Override
-        protected ArrayList<HashMap<String, String>> doInBackground(String... params) {
+        protected Void doInBackground(String... params) {
             String response;
-            ArrayList<HashMap<String, String>> entries = new ArrayList<>();
             // Get json from server
             try {
                 HashMap<String, String> postParams = new HashMap<>();
@@ -83,21 +86,22 @@ public class DateRangeActivity extends AppCompatActivity {
 
                 Log.d(TAG, "Response: " + response);
 
-                entries = MainActivity.parseJsonEntries(DateRangeActivity.this, response);
+                mEntries = MainActivity.parseJsonEntries(DateRangeActivity.this, response);
             } catch (Exception e) {
                 e.printStackTrace();
                 this.cancel(true);
             }
 
-            return entries;
+            return null;
         }
 
         @Override
-        protected void onPostExecute(ArrayList<HashMap<String, String>> entries) {
-            super.onPostExecute(entries);
-            mAdapter.updateEntries(entries);
+        protected void onPostExecute(Void aVoid) {
+            super.onPostExecute(aVoid);
+            mAdapter.updateEntries(mEntries);
             mSwipeRefresh.setRefreshing(false);
         }
+
 
         @Override
         protected void onCancelled() {
