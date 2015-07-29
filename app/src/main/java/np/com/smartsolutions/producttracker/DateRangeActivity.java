@@ -24,10 +24,13 @@ public class DateRangeActivity extends AppCompatActivity {
     public static final String KEY_DATE1 = "date1";
     public static final String KEY_DATE2 = "date2";
 
+    String date1, date2;
+
     RecyclerView mRecyclerView;
     EntriesRecyclerViewAdapter mAdapter;
     SwipeRefreshLayout mSwipeRefresh;
     ArrayList<EntriesRecyclerViewAdapter.EntriesRecyclerItem> mEntries;
+    View mFillerNothingHere;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -36,23 +39,33 @@ public class DateRangeActivity extends AppCompatActivity {
 
         findViewById(R.id.myFAB).setVisibility(View.INVISIBLE);
         mSwipeRefresh = (SwipeRefreshLayout) findViewById(R.id.swipeRefreshLayout);
-        mSwipeRefresh.setEnabled(false);
         mSwipeRefresh.setColorSchemeResources(R.color.primary);
         // fix setRefreshing(true)
         mSwipeRefresh.setProgressViewOffset(false,
                 (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, -48, getResources().getDisplayMetrics()),
                 (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 16, getResources().getDisplayMetrics()));
+        mSwipeRefresh.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+            @Override
+            public void onRefresh() {
+                new GetSelectedEntries().execute(date1, date2);
+            }
+        });
+
         mRecyclerView = (RecyclerView) findViewById(R.id.recycler_view);
         mRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         mAdapter = new EntriesRecyclerViewAdapter(this);
         mRecyclerView.setAdapter(mAdapter);
+
+        mFillerNothingHere = findViewById(R.id.ll_filler);
+        mFillerNothingHere.setVisibility(View.INVISIBLE);
+
         onNewIntent(getIntent());
     }
 
     @Override
     protected void onNewIntent(Intent intent) {
-        String date1 = intent.getStringExtra(KEY_DATE1);
-        String date2 = intent.getStringExtra(KEY_DATE2);
+        date1 = intent.getStringExtra(KEY_DATE1);
+        date2 = intent.getStringExtra(KEY_DATE2);
         Log.d(TAG, "Selected dates: " + date1 + " and " + date2);
         new GetSelectedEntries().execute(date1, date2);
 
@@ -64,6 +77,7 @@ public class DateRangeActivity extends AppCompatActivity {
         protected void onPreExecute() {
             super.onPreExecute();
             mSwipeRefresh.setRefreshing(true);
+            mFillerNothingHere.setVisibility(View.INVISIBLE);
             if (!ServiceHandler.isOnline(DateRangeActivity.this)) {
                 new AlertDialog.Builder(DateRangeActivity.this)
                         .setTitle("No Connection Detected")
@@ -100,6 +114,9 @@ public class DateRangeActivity extends AppCompatActivity {
             super.onPostExecute(aVoid);
             mAdapter.updateEntries(mEntries);
             mSwipeRefresh.setRefreshing(false);
+            if (!(mEntries.size() > 0)) {
+                mFillerNothingHere.setVisibility(View.VISIBLE);
+            }
         }
 
 
