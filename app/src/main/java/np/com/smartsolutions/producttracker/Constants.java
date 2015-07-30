@@ -4,7 +4,8 @@ package np.com.smartsolutions.producttracker;
 public final class Constants {
 
     // Connection
-    public static final String URL = "http://172.16.31.236/tracker.php";
+    //public static final String URL = "http://172.16.31.236/test/tracker.php";
+    public static final String URL = "http://smartsolutions.com.np/dev/prodtrak/pt.php";
     //public static final String URL = "http://192.168.0.110/tracker.php";
     //public static final String URL = "http://192.168.43.34/tracker.php";
 

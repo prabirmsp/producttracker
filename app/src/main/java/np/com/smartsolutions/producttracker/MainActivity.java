@@ -270,12 +270,14 @@ public class MainActivity extends AppCompatActivity {
         view.findViewById(R.id.bu_ok).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                new AddProductAsync(MainActivity.this).execute(input.getText().toString().trim());
+                new AddProductAsync(MainActivity.this).execute(input.getText().toString().trim().replace("\\s", ""));
                 dialog.dismiss();
             }
         });
         dialog.setContentView(view);
         dialog.show();
+
+        Toast.makeText(this, "Product name must not contain spaces!", Toast.LENGTH_LONG).show();
 
         dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
 

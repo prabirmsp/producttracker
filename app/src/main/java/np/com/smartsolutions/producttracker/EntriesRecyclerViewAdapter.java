@@ -136,7 +136,9 @@ public class EntriesRecyclerViewAdapter extends RecyclerView.Adapter<EntriesRecy
                             return labelFormat.format(date);
                         } else {
                             // show currency for y values
-                            return coolFormat(value, 0);
+                            if (value > 999)
+                                return coolFormat(value, 0);
+                            else return "" + (int) value;
                         }
                     }
                 });
