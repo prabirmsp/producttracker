@@ -5,8 +5,9 @@ public final class Constants {
 
     // Connection
     //public static final String URL = "http://172.16.31.236/test/tracker.php";
-    public static final String URL = "http://smartsolutions.com.np/dev/prodtrak/tracker.php";
-    //public static final String URL = "http://192.168.0.110/tracker.php";
+    //public static final String URL = "http://smartsolutions.com.np/dev/prodtrak/tracker.php";
+    public static final String URL = "http://192.168.1.176/tracker.php";
+    //public static final String URL = "http://192.168.0.107/tracker.php";
     //public static final String URL = "http://192.168.43.34/tracker.php";
 
     // Server POST Query Constants
@@ -14,13 +15,15 @@ public final class Constants {
     public static final String DATE1 = "date1";
     public static final String DATE2 = "date2";
     public static final String SEND_ENTRY = "daily_update";
-    public static final String ENTRY_ADDED = "ENTRY_ADDED";
     public static final String ADD_PRODUCT = "add_product";
     public static final String JSON_CLASS_PRODUCTS = "products";
     public static final String JSON_CLASS_ENTRIES = "entries";
+    public static final String JSON_PROD_ORDERS = "order";
+    public static final String JSON_PROD_RETURNS = "return";
     public static final String USER_OP = "user_operation";
     public static final String MAKE_ADMIN = "make_admin";
-    public static final String ERROR = "ERROR";
+    public static final String SUCCESS = "success";
+    public static final String DATA = "data";
     public static final String[] ADDITIONAL_COLUMNS = {"user_id", "date", "edited_time", "total"};
 
 

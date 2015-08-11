@@ -2,7 +2,6 @@ package np.com.smartsolutions.producttracker;
 
 import android.content.Context;
 import android.net.ConnectivityManager;
-import android.os.SystemClock;
 import android.util.Log;
 
 import java.io.BufferedReader;
@@ -16,8 +15,6 @@ import java.net.URL;
 import java.net.URLEncoder;
 import java.util.HashMap;
 import java.util.Map;
-
-import javax.net.ssl.HttpsURLConnection;
 
 public class ServiceHandler {
 
@@ -39,25 +36,30 @@ public class ServiceHandler {
         conn.setRequestMethod("POST");
         conn.setDoInput(true);
         conn.setDoOutput(true);
+        conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+        String postString = getPostDataString(postDataParams);
+        conn.setRequestProperty("Content-Length", "" + postString.length());
 
 
         OutputStream os = conn.getOutputStream();
         BufferedWriter writer = new BufferedWriter(
                 new OutputStreamWriter(os, "UTF-8"));
-        writer.write(getPostDataString(postDataParams));
+        writer.write(postString);
 
         writer.flush();
         writer.close();
         os.close();
         int responseCode = conn.getResponseCode();
 
-        if (responseCode == HttpsURLConnection.HTTP_OK) {
+
+        if (responseCode == HttpURLConnection.HTTP_OK) {
             String line;
             BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
             while ((line = br.readLine()) != null) {
                 response += line;
             }
         } else {
+            Log.e(TAG, conn.getResponseMessage());
             throw new Exception(responseCode + "");
         }
 
@@ -79,6 +81,7 @@ public class ServiceHandler {
             result.append("=");
             result.append(URLEncoder.encode(entry.getValue(), "UTF-8"));
         }
+        Log.d(TAG, result.toString());
         return result.toString();
     }
 

@@ -8,5 +8,7 @@
     <color name="text_dark">#494949</color>
     <color name="text_light">#DBDBDB</color>
     <color name="text_white">#EEEEEE</color>
+    <color name="text_red">#B71C1C</color>
+    <color name="text_green">#1B5E20</color>
     <color name="grey">#AAAAAA</color>
 </resources>

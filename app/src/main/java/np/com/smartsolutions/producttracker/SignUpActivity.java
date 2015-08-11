@@ -12,6 +12,8 @@ import android.view.View;
 import android.view.Window;
 import android.widget.EditText;
 
+import org.json.JSONObject;
+
 import java.util.HashMap;
 
 public class SignUpActivity extends AppCompatActivity {
@@ -98,11 +100,17 @@ public class SignUpActivity extends AppCompatActivity {
 
                 Log.d(TAG, "Response: " + response);
 
-                if (response.contains(Constants.ERROR))
-                    cancel(true);
-                else {
+
+                JSONObject returnedObject = new JSONObject(response);
+                if(returnedObject.getBoolean(Constants.SUCCESS)) {
+                    // Success
                     UserHandler user = new UserHandler(SignUpActivity.this);
-                    user.loginFromJSON(response);
+                    user.loginFromJSON(returnedObject.getString(Constants.DATA));
+
+                } else {
+                    // Error
+                    Log.d(TAG, "Error in response: " + returnedObject.getString(Constants.DATA));
+                    cancel(true);
                 }
             } catch (Exception e) {
                 e.printStackTrace();

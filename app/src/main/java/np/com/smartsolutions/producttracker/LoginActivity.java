@@ -11,6 +11,8 @@ import android.view.View;
 import android.view.Window;
 import android.widget.EditText;
 
+import org.json.JSONObject;
+
 import java.util.HashMap;
 
 public class LoginActivity extends AppCompatActivity {
@@ -83,12 +85,18 @@ public class LoginActivity extends AppCompatActivity {
 
                 Log.d(TAG, "Response: " + response);
 
-                if(response.contains(Constants.ERROR))
-                    cancel(true);
-                else {
+                JSONObject returnedObject = new JSONObject(response);
+                if(returnedObject.getBoolean(Constants.SUCCESS)) {
+                    // Success
                     UserHandler user = new UserHandler(LoginActivity.this);
-                    user.loginFromJSON(response);
+                    user.loginFromJSON(returnedObject.getString(Constants.DATA));
+
+                } else {
+                    // Error
+                    Log.d(TAG, "Error in response: " + returnedObject.getString(Constants.DATA));
+                    cancel(true);
                 }
+
             } catch (Exception e) {
                 e.printStackTrace();
                 this.cancel(true);
@@ -112,7 +120,7 @@ public class LoginActivity extends AppCompatActivity {
             dialog.dismiss();
             new AlertDialog.Builder(LoginActivity.this)
                     .setTitle("Error Logging In")
-                    .setMessage("Please check your credentials and try again.")
+                    .setMessage("Please check your credentials or connection and try again.")
                     .setPositiveButton("OK", null)
                     .show();
         }

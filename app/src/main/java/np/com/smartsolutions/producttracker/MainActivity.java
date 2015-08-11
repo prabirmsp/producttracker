@@ -27,7 +27,10 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
 import android.widget.EditText;
+import android.widget.PopupMenu;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.TextView;
@@ -58,6 +61,7 @@ public class MainActivity extends AppCompatActivity {
 
     public static final String TAG = MainActivity.class.getSimpleName();
     private static final int PLAY_SERVICES_RESOLUTION_REQUEST = 9000;
+    public static final String ADD_MODE = "add_mode";
 
     RecyclerView mRecyclerView;
     EntriesRecyclerViewAdapter mAdapter;
@@ -100,11 +104,38 @@ public class MainActivity extends AppCompatActivity {
         mAddFAB.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (ServiceHandler.isOnline(MainActivity.this)) {
-                    Intent intent = new Intent(MainActivity.this, AddEntryActivity.class);
-                    startActivity(intent);
-                } else
-                    noConnectionAlert();
+                Animation rotate = AnimationUtils.loadAnimation(MainActivity.this, R.anim.turn_add_button);
+                rotate.setFillAfter(true);
+                mAddFAB.startAnimation(rotate);
+                final PopupMenu popupMenu = new PopupMenu(MainActivity.this, findViewById(R.id.ll_fab));
+                popupMenu.getMenuInflater().inflate(R.menu.menu_add_button, popupMenu.getMenu());
+                popupMenu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
+                    @Override
+                    public boolean onMenuItemClick(MenuItem item) {
+                        String extra = "";
+                        if (item.getItemId() == R.id.orders) {
+                            extra = Constants.JSON_PROD_ORDERS;
+                        } else if (item.getItemId() == R.id.returns) {
+                            extra = Constants.JSON_PROD_RETURNS;
+                        }
+                        if (ServiceHandler.isOnline(MainActivity.this)) {
+                            Intent intent = new Intent(MainActivity.this, AddEntryActivity.class);
+                            intent.putExtra(ADD_MODE, extra);
+                            startActivity(intent);
+                        } else
+                            noConnectionAlert();
+                        popupMenu.dismiss();
+                        return true;
+                    }
+                });
+                popupMenu.setOnDismissListener(new PopupMenu.OnDismissListener() {
+                    @Override
+                    public void onDismiss(PopupMenu menu) {
+                        Animation unrotate = AnimationUtils.loadAnimation(MainActivity.this, R.anim.unturn_add_button);
+                        mAddFAB.startAnimation(unrotate);
+                    }
+                });
+                popupMenu.show();
             }
         });
 
@@ -134,10 +165,6 @@ public class MainActivity extends AppCompatActivity {
 
         new GetEntries().execute();
         firstLoad = true;
-    }
-
-    public void addGraph() {
-
     }
 
     @Override
@@ -386,19 +413,31 @@ public class MainActivity extends AppCompatActivity {
 
                 Log.d(TAG, "Response: " + response);
 
-                mEntries = parseJsonEntries(MainActivity.this, response);
-                if (mEntries.size() > 1) { // add graph and load the rest of the list
-                    /*
-                    mEntries.add(0, new EntriesRecyclerViewAdapter.EntriesRecyclerItem(EntriesRecyclerViewAdapter.VIEW_GRAPH));
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                       //     mAdapter.updateEntries(mEntries);
-                        }
-                    });
-                    mEntries.get(0).addDataPoints(getDataPoints(mEntries));
-                    */
-                    mEntries.add(0, new EntriesRecyclerViewAdapter.EntriesRecyclerItem(getDataPoints(mEntries)));
+                JSONObject returnedObject = new JSONObject(response);
+                if (!returnedObject.getBoolean(Constants.SUCCESS)) {
+                    // Error
+                    Log.d(TAG, "Error in response: " + returnedObject.getString(Constants.DATA));
+                    cancel(true);
+                } else {
+                    // Success
+                    mEntries = parseJsonEntries(MainActivity.this, returnedObject.getString(Constants.DATA));
+
+                    if (mEntries.size() > 1) { // add graph and load the rest of the list
+
+                        mEntries.add(0,
+                                new EntriesRecyclerViewAdapter.EntriesRecyclerItem(
+                                        EntriesRecyclerViewAdapter.VIEW_GRAPH)
+                        );
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                mAdapter.updateEntries(mEntries);
+                            }
+                        });
+                        mEntries.get(0).addDataPoints(getDataPoints(mEntries));
+
+                        // mEntries.add(0, new EntriesRecyclerViewAdapter.EntriesRecyclerItem(getDataPoints(mEntries)));
+                    }
                 }
             } catch (Exception e) {
                 e.printStackTrace();
@@ -436,8 +475,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @NonNull
-    public static ArrayList<EntriesRecyclerViewAdapter.EntriesRecyclerItem> parseJsonEntries(Context context, String response)
-            throws JSONException {
+    public static ArrayList<EntriesRecyclerViewAdapter.EntriesRecyclerItem> parseJsonEntries(
+            Context context, String response)
+            throws JSONException, ParseException {
         // Parse json data
         JSONObject jsonObject = new JSONObject(response);
         // Get products list
@@ -457,45 +497,59 @@ public class MainActivity extends AppCompatActivity {
         products.addAll(Arrays.asList(Constants.ADDITIONAL_COLUMNS));
 
         // Get entries
-        ArrayList<EntriesRecyclerViewAdapter.EntriesRecyclerItem> entries = new ArrayList<>();
         JSONArray jsonEntries = jsonObject.getJSONArray(Constants.JSON_CLASS_ENTRIES);
+
+        ArrayList<EntriesRecyclerViewAdapter.EntriesRecyclerItem> entries = new ArrayList<>();
+
         int numEntries = jsonEntries.length();
+
         for (int i = 0; i < numEntries; i++) {
             entries.add(
                     new EntriesRecyclerViewAdapter.EntriesRecyclerItem(
-                            new Entry((JSONObject) jsonEntries.get(i))));
+                            new Entry(jsonEntries.getJSONObject(i))));
         }
         return entries;
     }
 
-    public static DataPoint[] getDataPoints(
+    public static HashMap<String, DataPoint[]> getDataPoints(
             ArrayList<EntriesRecyclerViewAdapter.EntriesRecyclerItem> entries) {
         DateFormat serverFormat = new SimpleDateFormat("yyyy-MM-dd");
 
+        HashMap<String, DataPoint[]> dataPointsMap = new HashMap<>();
         // Count number of entries
-        int numDataPoints = 0;
+        int numOrderPoints = 0, numReturnPoints = 0;
         for (EntriesRecyclerViewAdapter.EntriesRecyclerItem e : entries)
-            if (e.viewType == EntriesRecyclerViewAdapter.VIEW_ENTRY)
-                numDataPoints++;
-        // Declare array
-        DataPoint[] dataPoints = new DataPoint[numDataPoints];
-        Log.d(TAG, "Data points: " + numDataPoints);
+            if (e.viewType == EntriesRecyclerViewAdapter.VIEW_ENTRY) {
+                if (e.entry.hasOrders)
+                    numOrderPoints++;
+                if (e.entry.hasReturns)
+                    numReturnPoints++;
+            }
+        DataPoint[] orderDataPoints = new DataPoint[numOrderPoints];
+        DataPoint[] returnDataPoints = new DataPoint[numReturnPoints];
 
         try {
-            int count = 0;
+            int orderCount = 0, returnCount = 0;
             for (int i = entries.size() - 1; i >= 0; i--) {
                 EntriesRecyclerViewAdapter.EntriesRecyclerItem entryItem = entries.get(i);
                 if (entryItem.viewType == EntriesRecyclerViewAdapter.VIEW_ENTRY) {
                     Entry e = entryItem.entry;
-                    dataPoints[count++] = new DataPoint(
-                            serverFormat.parse(e.get("date")),
-                            Integer.parseInt(e.get("total")));
+                    if (e.hasOrders)
+                        orderDataPoints[orderCount++] = new DataPoint(
+                                serverFormat.parse(e.getFromOrder("date")),
+                                Integer.parseInt(e.getFromOrder("total")));
+                    if (e.hasReturns)
+                        returnDataPoints[returnCount++] = new DataPoint(
+                                serverFormat.parse(e.getFromOrder("date")),
+                                Integer.parseInt(e.getFromOrder("total")));
                 }
             }
+            dataPointsMap.put(Constants.JSON_PROD_ORDERS, orderDataPoints);
+            dataPointsMap.put(Constants.JSON_PROD_RETURNS, returnDataPoints);
         } catch (JSONException | ParseException e) {
             e.printStackTrace();
         }
-        return dataPoints;
+        return dataPointsMap;
     }
 
     public class MakeAdmin extends AsyncTask<String, Void, Void> {
@@ -518,12 +572,12 @@ public class MainActivity extends AppCompatActivity {
 
                 Log.d(TAG, "Response: " + response);
 
+                if (!(new JSONObject(response).getBoolean(Constants.SUCCESS)))
+                    this.cancel(true);
+
             } catch (Exception e) {
                 e.printStackTrace();
                 this.cancel(true);
-            } finally {
-                if (!(response.contains("Admin added")))
-                    this.cancel(true);
             }
             return null;
         }

@@ -13,6 +13,7 @@ import android.widget.ListView;
 import android.widget.TextView;
 
 import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.text.DateFormat;
 import java.text.NumberFormat;
@@ -60,21 +61,21 @@ public class EntryInfoActivity extends AppCompatActivity {
         }
 
         try {
-            mEntry = new Entry(json);
+            mEntry = new Entry(new JSONObject(json));
             DateFormat serverFormat = new SimpleDateFormat("yyyy-MM-dd");
             DateFormat localFormat = DateFormat.getDateInstance();
-            mDate = serverFormat.parse(mEntry.get("date"));
+            mDate = serverFormat.parse(mEntry.getFromOrder("date"));
 
             setTitle(localFormat.format(mDate));
 
             TextView userName = (TextView) findViewById(R.id.tv_user);
-            userName.setText(mEntry.get("user_id"));
+            userName.setText(mEntry.getFromOrder("user_id"));
 
             TextView editTime = (TextView) findViewById(R.id.tv_edit_date);
-            editTime.setText("On " + mEntry.get("edited_time"));
+            editTime.setText("On " + mEntry.getFromOrder("edited_time"));
 
             TextView total = (TextView) findViewById(R.id.tv_total);
-            total.setText(numberFormat.format(Integer.parseInt(mEntry.get("total"))));
+            total.setText(numberFormat.format(Integer.parseInt(mEntry.getFromOrder("total"))));
 
             ListViewAdapter adapter = new ListViewAdapter();
             mListView.setAdapter(adapter);
@@ -141,7 +142,7 @@ public class EntryInfoActivity extends AppCompatActivity {
 
             try {
                 TextView productValue = (TextView) convertView.findViewById(R.id.tv_product_value);
-                productValue.setText(numberFormat.format(Integer.parseInt(mEntry.get(product))));
+                productValue.setText(numberFormat.format(Integer.parseInt(mEntry.getFromOrder(product))));
             } catch (JSONException e) {
                 e.printStackTrace();
             }

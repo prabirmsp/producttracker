@@ -13,7 +13,8 @@ import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.View;
-import android.widget.ListView;
+
+import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -99,8 +100,10 @@ public class DateRangeActivity extends AppCompatActivity {
                 response = ServiceHandler.performPostCall(Constants.URL, postParams);
 
                 Log.d(TAG, "Response: " + response);
-
-                mEntries = MainActivity.parseJsonEntries(DateRangeActivity.this, response);
+                JSONObject returnedObject = new JSONObject(response);
+                if (returnedObject.getBoolean(Constants.SUCCESS))
+                    mEntries = MainActivity.parseJsonEntries(
+                            DateRangeActivity.this, returnedObject.getJSONObject(Constants.DATA).toString());
             } catch (Exception e) {
                 e.printStackTrace();
                 this.cancel(true);

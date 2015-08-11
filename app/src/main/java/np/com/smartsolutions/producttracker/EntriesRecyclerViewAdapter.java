@@ -14,8 +14,6 @@ import com.jjoe64.graphview.GraphView;
 import com.jjoe64.graphview.series.DataPoint;
 import com.jjoe64.graphview.series.LineGraphSeries;
 
-import org.json.JSONException;
-
 import java.text.DateFormat;
 import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
@@ -23,6 +21,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 
 public class EntriesRecyclerViewAdapter extends RecyclerView.Adapter<EntriesRecyclerViewAdapter.ViewHolder> {
@@ -81,85 +81,119 @@ public class EntriesRecyclerViewAdapter extends RecyclerView.Adapter<EntriesRecy
     }
 
     private void onBindGraph(ViewHolder holder, int position) {
-        DataPoint[] dataPoints = mEntries.get(position).dataPoints;
         holder.graphView.removeAllSeries();
-        int primaryDark = mContext.getResources().getColor(R.color.primary_dark);
+        if (mEntries.get(position).dataPointsMap != null) {
+            int primary = mContext.getResources().getColor(R.color.primary);
+            int primaryDark = mContext.getResources().getColor(R.color.primary_dark);
+            int red = mContext.getResources().getColor(R.color.text_red);
 
-        LineGraphSeries<DataPoint> dataSeries = new LineGraphSeries<>(dataPoints);
-        dataSeries.setColor(mContext.getResources().getColor(R.color.primary));
+            // Add Orders Graph
+            DataPoint[] ordersPoints = mEntries.get(position).dataPointsMap.get(Constants.JSON_PROD_ORDERS);
+            LineGraphSeries<DataPoint> orderSeries = new LineGraphSeries<>(ordersPoints);
+            orderSeries.setColor(primary);
+            holder.graphView.addSeries(orderSeries);
 
-        holder.graphView.addSeries(dataSeries);
+            // Add Returns Graph
+            DataPoint[] returnsPoints = mEntries.get(position).dataPointsMap.get(Constants.JSON_PROD_RETURNS);
+            LineGraphSeries<DataPoint> returnSeries = new LineGraphSeries<>(returnsPoints);
+            returnSeries.setColor(red);
+            holder.graphView.addSeries(returnSeries);
 
-        // set manual x bounds
-        SharedPreferences graphPrefs = mContext.getSharedPreferences(Constants.GRAPH_PREFS, 0);
-        double minX;
-        String viewStr = "";
-        int viewPref = graphPrefs.getInt(Constants.GRAPH_VIEW, Constants.MONTH);
-        if (viewPref == Constants.ALL) {
-            minX = dataPoints[0].getX();
-            viewStr = "All";
-        } else {
-            Calendar min = Calendar.getInstance();
-            switch (viewPref) {
-                case Constants.YEAR:
-                    min.add(Calendar.YEAR, -1);
-                    viewStr = "Year";
-                    break;
-                case Constants.WEEK:
-                    min.add(Calendar.HOUR, -168); // 168 hours in a week
-                    viewStr = "Week";
-                    break;
-                case Constants.MONTH:
-                default:
-                    min.add(Calendar.MONTH, -1);
-                    viewStr = "Month";
-                    break;
+
+            // set manual x bounds
+            SharedPreferences graphPrefs = mContext.getSharedPreferences(Constants.GRAPH_PREFS, 0);
+            double minX;
+            String viewStr = "";
+            int viewPref = graphPrefs.getInt(Constants.GRAPH_VIEW, Constants.MONTH);
+            if (viewPref == Constants.ALL) {
+                minX = ordersPoints[0].getX();
+                viewStr = "All";
+            } else {
+                Calendar min = Calendar.getInstance();
+                switch (viewPref) {
+                    case Constants.YEAR:
+                        min.add(Calendar.YEAR, -1);
+                        viewStr = "Year";
+                        break;
+                    case Constants.WEEK:
+                        min.add(Calendar.HOUR, -168); // 168 hours in a week
+                        viewStr = "Week";
+                        break;
+                    case Constants.MONTH:
+                    default:
+                        min.add(Calendar.MONTH, -1);
+                        viewStr = "Month";
+                        break;
+                }
+                minX = min.getTimeInMillis();
             }
-            minX = min.getTimeInMillis();
-        }
-        holder.graphView.getViewport().setMinX(minX);
-        holder.graphView.getViewport().setMaxX(Calendar.getInstance().getTimeInMillis());
-        holder.graphView.getViewport().setXAxisBoundsManual(true);
-        holder.graphView.setTitle("Total Products (" + viewStr + ")");
-        holder.graphView.setTitleColor(primaryDark);
+            holder.graphView.getViewport().setMinX(minX);
+            holder.graphView.getViewport().setMaxX(Calendar.getInstance().getTimeInMillis());
+            holder.graphView.getViewport().setXAxisBoundsManual(true);
+            holder.graphView.setTitle("Total Products (" + viewStr + ")");
+            holder.graphView.setTitleColor(primaryDark);
 
-        // set date label formatter
-        final DateFormat labelFormat = new SimpleDateFormat("MMM dd");
-        //holder.graphView.getGridLabelRenderer().setVerticalAxisTitle("Total");
-        holder.graphView.getGridLabelRenderer().setLabelFormatter(
-                new DefaultLabelFormatter() {
-                    @Override
-                    public String formatLabel(double value, boolean isValueX) {
-                        if (isValueX) {
-                            // show normal x values
-                            Date date = new Date((long) value);
-                            return labelFormat.format(date);
-                        } else {
-                            // show currency for y values
-                            if (value > 999)
-                                return coolFormat(value, 0);
-                            else return "" + (int) value;
+            // set date label formatter
+            final DateFormat labelFormat = new SimpleDateFormat("MMM dd");
+            //holder.graphView.getGridLabelRenderer().setVerticalAxisTitle("Total");
+            holder.graphView.getGridLabelRenderer().setLabelFormatter(
+                    new DefaultLabelFormatter() {
+                        @Override
+                        public String formatLabel(double value, boolean isValueX) {
+                            if (isValueX) {
+                                // show normal x values
+                                Date date = new Date((long) value);
+                                return labelFormat.format(date);
+                            } else {
+                                // show currency for y values
+                                if (value > 999)
+                                    return coolFormat(value, 0);
+                                else return "" + (int) value;
+                            }
                         }
-                    }
-                });
+                    });
 
-        holder.graphView.getGridLabelRenderer().setHorizontalLabelsColor(primaryDark);
-        holder.graphView.getGridLabelRenderer().setVerticalLabelsColor(primaryDark);
-        holder.graphView.getGridLabelRenderer().setNumHorizontalLabels(3); // only 4 because of the space
-        holder.loading.setVisibility(View.INVISIBLE);
+            holder.graphView.getGridLabelRenderer().setHorizontalLabelsColor(primaryDark);
+            holder.graphView.getGridLabelRenderer().setVerticalLabelsColor(primaryDark);
+            holder.graphView.getGridLabelRenderer().setNumHorizontalLabels(3); // only 4 because of the space
+            holder.loading.setVisibility(View.INVISIBLE);
+        }
+        else { // Graph data not yet loaded
+            holder.loading.setVisibility(View.VISIBLE);
+        }
 
     }
 
     private void onBindEntry(ViewHolder holder, int position) {
         try {
             final Entry entry = mEntries.get(position).entry;
-            String date = entry.get("date");
-            holder.month.setText(Constants.convertMonth[Integer.parseInt(date.substring(5, 7))]);
-            holder.day.setText(date.substring(8));
-            holder.user.setText(entry.get("user_id"));
-            holder.editDate.setText("On " + entry.get("edited_time"));
+            DateFormat serverFormat = new SimpleDateFormat("yyyy-MM-dd");
             NumberFormat numberFormat = NumberFormat.getIntegerInstance();
-            holder.total.setText(numberFormat.format(Integer.parseInt(entry.get("total"))));
+
+            if (entry.hasOrders) {
+                Date date = serverFormat.parse(entry.getFromOrder("date"));
+                holder.month.setText(new SimpleDateFormat("MMM").format(date));
+                holder.day.setText(new SimpleDateFormat("dd").format(date));
+                holder.user.setText(entry.getFromOrder("user_id"));
+                holder.editDate.setText("On " + entry.getFromOrder("edited_time"));
+                holder.order.setText(numberFormat.format(Integer.parseInt(entry.getFromOrder("total"))));
+                if (entry.hasReturns) {
+                    holder.returns.setText(numberFormat.format(Integer.parseInt(entry.getFromReturn("total"))));
+                    holder.label.setText("ORDERS / RETURNS");
+                } else {
+                    holder.returns.setText("");
+                    holder.label.setText("ORDERS");
+                }
+            } else {
+                Date date = serverFormat.parse(entry.getFromReturn("date"));
+                holder.month.setText(new SimpleDateFormat("MMM").format(date));
+                holder.day.setText(new SimpleDateFormat("dd").format(date));
+                holder.user.setText(entry.getFromReturn("user_id"));
+                holder.editDate.setText("On " + entry.getFromReturn("edited_time"));
+                holder.returns.setText(numberFormat.format(Integer.parseInt(entry.getFromReturn("total"))));
+                holder.order.setText("");
+                holder.label.setText("RETURNS");
+            }
 
             holder.itemView.setOnClickListener(new View.OnClickListener() {
                 @Override
@@ -169,7 +203,7 @@ public class EntriesRecyclerViewAdapter extends RecyclerView.Adapter<EntriesRecy
                     mContext.startActivity(intent);
                 }
             });
-        } catch (JSONException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
@@ -183,42 +217,6 @@ public class EntriesRecyclerViewAdapter extends RecyclerView.Adapter<EntriesRecy
     public int getItemCount() {
         return mEntries.size();
     }
-/*
-    @Override
-    public View getView(int position, View convertView, ViewGroup parent) {
-        if (convertView == null) {
-            convertView = View.inflate(mContext, R.layout.list_item, null);
-        }
-        TextView month = (TextView) convertView.findViewById(R.id.tv_month);
-        TextView day = (TextView) convertView.findViewById(R.id.tv_day);
-        TextView user = (TextView) convertView.findViewById(R.id.tv_user);
-        TextView editDate = (TextView) convertView.findViewById(R.id.tv_edit_date);
-        TextView total = (TextView) convertView.findViewById(R.id.tv_total);
-
-        try {
-            final Entry entry = mEntries.get(position);
-            String date = entry.get("date");
-            month.setText(Constants.convertMonth[Integer.parseInt(date.substring(5, 7))]);
-            day.setText(date.substring(8));
-            user.setText(entry.get("user_id"));
-            editDate.setText("On " + entry.get("edited_time"));
-            total.setText(entry.get("total"));
-
-            convertView.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    Intent intent = new Intent(mContext, EntryInfoActivity.class);
-                    intent.putExtra(KEY_ENTRY_JSON, entry.getJson());
-                    mContext.startActivity(intent);
-                }
-            });
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
-
-        return convertView;
-    }
-*/
 
     public class ViewHolder extends RecyclerView.ViewHolder {
         int viewType;
@@ -227,7 +225,9 @@ public class EntriesRecyclerViewAdapter extends RecyclerView.Adapter<EntriesRecy
         TextView day;
         TextView user;
         TextView editDate;
-        TextView total;
+        TextView label;
+        TextView order;
+        TextView returns;
         View loading;
         GraphView graphView;
 
@@ -241,7 +241,10 @@ public class EntriesRecyclerViewAdapter extends RecyclerView.Adapter<EntriesRecy
                     day = (TextView) itemView.findViewById(R.id.tv_day);
                     user = (TextView) itemView.findViewById(R.id.tv_user);
                     editDate = (TextView) itemView.findViewById(R.id.tv_edit_date);
-                    total = (TextView) itemView.findViewById(R.id.tv_total);
+                    order = (TextView) itemView.findViewById(R.id.tv_order);
+                    returns = (TextView) itemView.findViewById(R.id.tv_return);
+                    //label = (TextView) itemView.findViewById(R.id.tv_label);
+                    label = new TextView(mContext);
 
                     break;
                 case VIEW_GRAPH:
@@ -257,7 +260,7 @@ public class EntriesRecyclerViewAdapter extends RecyclerView.Adapter<EntriesRecy
     public static class EntriesRecyclerItem {
         int viewType;
         Entry entry;
-        DataPoint[] dataPoints;
+        HashMap<String, DataPoint[]> dataPointsMap;
 
         public EntriesRecyclerItem(Entry entry) {
             viewType = VIEW_ENTRY;
@@ -268,16 +271,16 @@ public class EntriesRecyclerViewAdapter extends RecyclerView.Adapter<EntriesRecy
             this.viewType = viewType;
         }
 
-        public boolean addDataPoints(DataPoint[] dataPoints) {
+        public boolean addDataPoints(HashMap<String, DataPoint[]> dataPointsMap) {
             boolean val;
             if (val = this.viewType == VIEW_GRAPH)
-                this.dataPoints = dataPoints;
+                this.dataPointsMap = dataPointsMap;
             return val;
         }
 
-        public EntriesRecyclerItem(DataPoint[] dataPoints) {
+        public EntriesRecyclerItem(HashMap<String, DataPoint[]> dataPointsMap) {
             viewType = VIEW_GRAPH;
-            this.dataPoints = Arrays.copyOf(dataPoints, dataPoints.length);
+            this.dataPointsMap = dataPointsMap;
 
         }
     }

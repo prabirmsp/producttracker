@@ -15,8 +15,6 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.ViewGroup;
-import android.view.Window;
 import android.widget.Button;
 import android.widget.DatePicker;
 import android.widget.Toast;
@@ -45,6 +43,8 @@ public class AddEntryActivity extends AppCompatActivity {
     ArrayList<String> entries;
     ArrayList<String> keys;
 
+    String mode;
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -64,6 +64,13 @@ public class AddEntryActivity extends AppCompatActivity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
 
+        mode = intent.getStringExtra(MainActivity.ADD_MODE);
+
+        if (mode.equals(Constants.JSON_PROD_ORDERS)) {
+            setTitle("Add Orders");
+        } else if (mode.equals(Constants.JSON_PROD_RETURNS)) {
+            setTitle("Add Returns");
+        }
         SharedPreferences preferences = getSharedPreferences(Constants.COLUMN_PREFS, 0);
         int numProducts = preferences.getInt(Constants.NUM_PRODUCTS, 0);
         mProducts = new ArrayList<>(numProducts);
@@ -110,8 +117,6 @@ public class AddEntryActivity extends AppCompatActivity {
             keys.add("user_unique_id");
             entries.add(userHandler.getUid());
 
-            // param[0] is products list
-            // param[1] is entries list
             new SubmitEntryToAdd().execute();
             finish();
         } else {
@@ -194,7 +199,7 @@ public class AddEntryActivity extends AppCompatActivity {
 
         @Override
         protected Void doInBackground(Void... params) {
-            String response = "";
+            String response;
             // Get json from server
             try {
                 JSONObject jsonObject = new JSONObject();
@@ -205,16 +210,18 @@ public class AddEntryActivity extends AppCompatActivity {
 
                 HashMap<String, String> postParams = new HashMap<>();
                 postParams.put(Constants.SEND_ENTRY, jsonString);
+                postParams.put("table",
+                        mode.equals(Constants.JSON_PROD_ORDERS) ? "product_orders" :
+                                (mode.equals(Constants.JSON_PROD_RETURNS) ? "product_returns" : ""));
                 response = ServiceHandler.performPostCall(Constants.URL, postParams);
 
                 Log.d(TAG, "Response: " + response);
 
+                if (!(new JSONObject(response).getBoolean(Constants.SUCCESS)))
+                    this.cancel(true);
             } catch (Exception e) {
                 e.printStackTrace();
                 this.cancel(true);
-            } finally {
-                if (!(response.contains(Constants.ENTRY_ADDED)))
-                    this.cancel(true);
             }
             return null;
         }
