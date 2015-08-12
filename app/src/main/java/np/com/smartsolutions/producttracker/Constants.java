@@ -5,9 +5,10 @@ public final class Constants {
 
     // Connection
     //public static final String URL = "http://172.16.31.236/test/tracker.php";
-    //public static final String URL = "http://smartsolutions.com.np/dev/prodtrak/tracker.php";
-    public static final String URL = "http://192.168.1.176/tracker.php";
-    //public static final String URL = "http://192.168.0.107/tracker.php";
+    public static final String URL = "http://smartsolutions.com.np/dev/prodtrak/tracker-v2.php";
+    //public static final String URL = "http://192.168.1.176/tracker.php";
+    //public static final String URL = "http://192.168.0.108/tracker.php";
+    //public static final String URL = "http://192.168.2.31/tracker.php";
     //public static final String URL = "http://192.168.43.34/tracker.php";
 
     // Server POST Query Constants

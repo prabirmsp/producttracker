@@ -81,7 +81,6 @@ public class ServiceHandler {
             result.append("=");
             result.append(URLEncoder.encode(entry.getValue(), "UTF-8"));
         }
-        Log.d(TAG, result.toString());
         return result.toString();
     }
 

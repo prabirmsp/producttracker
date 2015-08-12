@@ -9,12 +9,12 @@ android {
         applicationId "np.com.smartsolutions.producttracker"
         minSdkVersion 11
         targetSdkVersion 22
-        versionCode 1
-        versionName "0.1"
+        versionCode 3
+        versionName "0.2.1"
     }
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }

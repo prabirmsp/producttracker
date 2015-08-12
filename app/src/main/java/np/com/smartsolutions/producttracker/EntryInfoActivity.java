@@ -56,7 +56,7 @@ public class EntryInfoActivity extends AppCompatActivity {
         SharedPreferences prefs = getSharedPreferences(Constants.COLUMN_PREFS, 0);
         int numProducts = prefs.getInt(Constants.NUM_PRODUCTS, 0);
         mProducts = new ArrayList<>();
-        for (int i = 0; i < numProducts; i ++) {
+        for (int i = 0; i < numProducts; i++) {
             mProducts.add(prefs.getString("" + i, ""));
         }
 
@@ -64,18 +64,32 @@ public class EntryInfoActivity extends AppCompatActivity {
             mEntry = new Entry(new JSONObject(json));
             DateFormat serverFormat = new SimpleDateFormat("yyyy-MM-dd");
             DateFormat localFormat = DateFormat.getDateInstance();
-            mDate = serverFormat.parse(mEntry.getFromOrder("date"));
+            mDate = serverFormat.parse(mEntry.hasOrders ? mEntry.getFromOrder("date") : mEntry.getFromReturn("date"));
 
             setTitle(localFormat.format(mDate));
 
             TextView userName = (TextView) findViewById(R.id.tv_user);
-            userName.setText(mEntry.getFromOrder("user_id"));
+            userName.setText(mEntry.hasOrders ? mEntry.getFromOrder("user_id") : mEntry.getFromReturn("user_id"));
 
             TextView editTime = (TextView) findViewById(R.id.tv_edit_date);
-            editTime.setText("On " + mEntry.getFromOrder("edited_time"));
+            editTime.setText("On " + (mEntry.hasOrders ? mEntry.getFromOrder("edited_time") : mEntry.getFromReturn("edited_time")));
 
-            TextView total = (TextView) findViewById(R.id.tv_total);
-            total.setText(numberFormat.format(Integer.parseInt(mEntry.getFromOrder("total"))));
+            TextView totalOrders = (TextView) findViewById(R.id.tv_total_orders);
+            TextView totalReturns = (TextView) findViewById(R.id.tv_total_returns);
+
+            if (mEntry.hasOrders) {
+                totalOrders.setText(numberFormat.format(Integer.parseInt(mEntry.getFromOrder("total"))));
+            } else {
+                totalOrders.setVisibility(View.GONE);
+                findViewById(R.id.tv_order_title).setVisibility(View.GONE);
+            }
+
+            if (mEntry.hasReturns) {
+                totalReturns.setText(numberFormat.format(Integer.parseInt(mEntry.getFromReturn("total"))));
+            } else {
+                totalReturns.setVisibility(View.GONE);
+                findViewById(R.id.tv_return_title).setVisibility(View.GONE);
+            }
 
             ListViewAdapter adapter = new ListViewAdapter();
             mListView.setAdapter(adapter);
@@ -111,7 +125,7 @@ public class EntryInfoActivity extends AppCompatActivity {
 
     private class ListViewAdapter extends BaseAdapter {
 
-        public ListViewAdapter () {
+        public ListViewAdapter() {
             super();
         }
 
@@ -141,8 +155,19 @@ public class EntryInfoActivity extends AppCompatActivity {
             productName.setText(product);
 
             try {
-                TextView productValue = (TextView) convertView.findViewById(R.id.tv_product_value);
-                productValue.setText(numberFormat.format(Integer.parseInt(mEntry.getFromOrder(product))));
+                TextView orderValue = (TextView) convertView.findViewById(R.id.tv_order_value);
+                TextView returnValue = (TextView) convertView.findViewById(R.id.tv_return_value);
+
+                if (mEntry.hasOrders) {
+                    orderValue.setText(numberFormat.format(Integer.parseInt(mEntry.getFromOrder(product))));
+                } else {
+                    orderValue.setVisibility(View.GONE);
+                }
+                if (mEntry.hasReturns) {
+                    returnValue.setText(numberFormat.format(Integer.parseInt(mEntry.getFromReturn(product))));
+                } else {
+                    returnValue.setVisibility(View.GONE);
+                }
             } catch (JSONException e) {
                 e.printStackTrace();
             }

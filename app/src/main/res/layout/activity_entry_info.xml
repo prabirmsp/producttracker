@@ -2,6 +2,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/header_bg"
     tools:context="np.com.smartsolutions.producttracker.EntryInfoActivity">
 
     <LinearLayout
@@ -36,11 +37,56 @@
         android:gravity="center"
         android:text="On Date" />
 
+    <LinearLayout
+        android:id="@+id/ll_header"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/tv_edit_date"
+        android:background="@color/window_background"
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:paddingBottom="8dp"
+        android:paddingLeft="24dp"
+        android:paddingRight="24dp"
+        android:paddingTop="8dp"
+        android:weightSum="1">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight=".30"
+            android:text="Product Name" />
+
+        <TextView
+            android:id="@+id/tv_order_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight=".35"
+            android:gravity="end"
+            android:text="Orders"
+            android:textColor="@color/text_dark" />
+
+        <TextView
+            android:id="@+id/tv_return_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight=".35"
+            android:gravity="end"
+            android:text="Returns"
+            android:textColor="@color/text_red" />
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="0.5dp"
+        android:layout_above="@id/ll_header"
+        android:background="@color/grey" />
+
     <ListView
         android:id="@+id/list_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_below="@id/tv_edit_date"
+        android:layout_below="@id/ll_header"
         android:layout_marginBottom="56dp"
         android:background="@color/text_light" />
 
@@ -55,23 +101,37 @@
         android:layout_width="match_parent"
         android:layout_height="56dp"
         android:layout_alignParentBottom="true"
-        android:gravity="center_vertical"
+        android:background="@color/window_background"
+        android:gravity="center"
         android:orientation="horizontal"
         android:paddingLeft="24dp"
-        android:paddingRight="24dp">
+        android:paddingRight="24dp"
+        android:weightSum="1">
 
         <TextView
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_weight=".30"
             android:text="Total" />
 
         <TextView
-            android:id="@+id/tv_total"
-            android:layout_width="match_parent"
+            android:id="@+id/tv_total_orders"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_weight=".35"
             android:gravity="end"
             android:text="25"
             android:textColor="@color/text_dark"
+            android:textSize="24sp" />
+
+        <TextView
+            android:id="@+id/tv_total_returns"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight=".35"
+            android:gravity="end"
+            android:text="25"
+            android:textColor="@color/text_red"
             android:textSize="24sp" />
 
     </LinearLayout>

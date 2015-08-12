@@ -10,10 +10,16 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_margin="16dp"
-        android:text="Make Admin"
+        android:text="Add Product"
         android:textColor="@color/text_dark"
         android:textSize="20sp"
         android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/subtitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Product name may not contain spaces."/>
 
     <android.support.design.widget.TextInputLayout
         android:id="@+id/text_input_layout"

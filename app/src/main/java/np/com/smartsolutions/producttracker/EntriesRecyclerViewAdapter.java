@@ -7,6 +7,8 @@ import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
 import android.widget.TextView;
 
 import com.jjoe64.graphview.DefaultLabelFormatter;
@@ -18,11 +20,9 @@ import java.text.DateFormat;
 import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.Map;
 
 
 public class EntriesRecyclerViewAdapter extends RecyclerView.Adapter<EntriesRecyclerViewAdapter.ViewHolder> {
@@ -33,14 +33,17 @@ public class EntriesRecyclerViewAdapter extends RecyclerView.Adapter<EntriesRecy
     public static final int VIEW_GRAPH = 1;
     ArrayList<EntriesRecyclerItem> mEntries;
     Context mContext;
+    int lastAnimated;
 
     public EntriesRecyclerViewAdapter(Context context) {
         mContext = context;
         mEntries = new ArrayList<>();
+        lastAnimated = -1;
     }
 
     public void updateEntries(ArrayList<EntriesRecyclerItem> entries) {
         mEntries = entries;
+        lastAnimated = -1;
         notifyDataSetChanged();
     }
 
@@ -78,6 +81,17 @@ public class EntriesRecyclerViewAdapter extends RecyclerView.Adapter<EntriesRecy
                 onBindGraph(holder, position);
                 break;
         }
+        // Animate
+
+        if (lastAnimated < position) {
+            Animation animation = AnimationUtils.loadAnimation(mContext, holder.viewType == VIEW_GRAPH ? R.anim.enter_graph : R.anim.enter_list_item);
+            animation.setFillEnabled(false);
+            animation.setFillAfter(false);
+            holder.itemView.startAnimation(animation);
+            lastAnimated = position;
+        }
+
+
     }
 
     private void onBindGraph(ViewHolder holder, int position) {
@@ -86,6 +100,13 @@ public class EntriesRecyclerViewAdapter extends RecyclerView.Adapter<EntriesRecy
             int primary = mContext.getResources().getColor(R.color.primary);
             int primaryDark = mContext.getResources().getColor(R.color.primary_dark);
             int red = mContext.getResources().getColor(R.color.text_red);
+            int green = mContext.getResources().getColor(R.color.text_green);
+
+            // Add Net Graph
+            DataPoint[] netPoints = mEntries.get(position).dataPointsMap.get("net");
+            LineGraphSeries<DataPoint> netSeries = new LineGraphSeries<>(netPoints);
+            netSeries.setColor(green);
+            holder.graphView.addSeries(netSeries);
 
             // Add Orders Graph
             DataPoint[] ordersPoints = mEntries.get(position).dataPointsMap.get(Constants.JSON_PROD_ORDERS);
@@ -157,8 +178,7 @@ public class EntriesRecyclerViewAdapter extends RecyclerView.Adapter<EntriesRecy
             holder.graphView.getGridLabelRenderer().setVerticalLabelsColor(primaryDark);
             holder.graphView.getGridLabelRenderer().setNumHorizontalLabels(3); // only 4 because of the space
             holder.loading.setVisibility(View.INVISIBLE);
-        }
-        else { // Graph data not yet loaded
+        } else { // Graph data not yet loaded
             holder.loading.setVisibility(View.VISIBLE);
         }
 
@@ -203,6 +223,14 @@ public class EntriesRecyclerViewAdapter extends RecyclerView.Adapter<EntriesRecy
                     mContext.startActivity(intent);
                 }
             });
+
+
+            if (position == mEntries.size() - 1)
+                holder.separator.setVisibility(View.GONE);
+            else holder.separator.setVisibility(View.VISIBLE);
+
+            holder.itemView.setSelected(false);
+
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -229,6 +257,7 @@ public class EntriesRecyclerViewAdapter extends RecyclerView.Adapter<EntriesRecy
         TextView order;
         TextView returns;
         View loading;
+        View separator;
         GraphView graphView;
 
         public ViewHolder(View itemView, int viewType) {
@@ -243,8 +272,10 @@ public class EntriesRecyclerViewAdapter extends RecyclerView.Adapter<EntriesRecy
                     editDate = (TextView) itemView.findViewById(R.id.tv_edit_date);
                     order = (TextView) itemView.findViewById(R.id.tv_order);
                     returns = (TextView) itemView.findViewById(R.id.tv_return);
+                    separator = itemView.findViewById(R.id.separator);
                     //label = (TextView) itemView.findViewById(R.id.tv_label);
                     label = new TextView(mContext);
+                    itemView.setClickable(true);
 
                     break;
                 case VIEW_GRAPH:

@@ -5,7 +5,7 @@
 
     <!-- view background color -->
     <solid
-        android:color="@color/primary" >
+        android:color="@color/primary_light" >
     </solid>
     <!-- Here is the corner radius -->
     <corners

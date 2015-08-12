@@ -2,6 +2,7 @@
 <resources>
     <color name="primary">#607D8B</color>
     <color name="primary_dark">#455A64</color>
+    <color name="primary_light">#78909C</color>
     <color name="primary_highlight">#D32F2F</color>
     <color name="primary_highlight_pink">#E2014D</color>
     <color name="transparent">#00000000</color>
@@ -9,6 +10,8 @@
     <color name="text_light">#DBDBDB</color>
     <color name="text_white">#EEEEEE</color>
     <color name="text_red">#B71C1C</color>
-    <color name="text_green">#1B5E20</color>
+    <color name="text_green">#2E7D32</color>
     <color name="grey">#AAAAAA</color>
+    <color name="window_background">#ECEFF1</color>
+    <color name="header_bg">#CFD8DC</color>
 </resources>

@@ -30,6 +30,7 @@ import android.view.Window;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.EditText;
+import android.widget.ListView;
 import android.widget.PopupMenu;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
@@ -71,11 +72,15 @@ public class MainActivity extends AppCompatActivity {
     Boolean firstLoad;
     View mFillerNothingHere;
 
+    int distanceScrolled;
+    boolean isFABVisible;
+
     // For notifications
     private BroadcastReceiver mRegistrationBroadcastReceiver;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        overridePendingTransition(R.anim.fade_in, R.anim.fade_out);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
@@ -83,6 +88,27 @@ public class MainActivity extends AppCompatActivity {
         mRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         mAdapter = new EntriesRecyclerViewAdapter(this);
         mRecyclerView.setAdapter(mAdapter);
+        distanceScrolled = 0;
+        isFABVisible = true;
+        mRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
+                int threshHold = 300;
+                super.onScrolled(recyclerView, dx, dy);
+                if (dy > 0) {
+                    distanceScrolled += dy;
+                    if (distanceScrolled > threshHold && isFABVisible) {
+                        mAddFAB.startAnimation(AnimationUtils.loadAnimation(MainActivity.this, R.anim.hide_fab));
+                        isFABVisible = false;
+                    }
+                } else if (dy < 0 && !isFABVisible) {
+                    mAddFAB.startAnimation(AnimationUtils.loadAnimation(MainActivity.this, R.anim.show_fab));
+                    isFABVisible = true;
+                    distanceScrolled = 0;
+
+                }
+            }
+        });
 
 
         mEntries = new ArrayList<>();
@@ -284,7 +310,7 @@ public class MainActivity extends AppCompatActivity {
     private void showAddProduct() {
         final Dialog dialog = new Dialog(this);
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
-        View view = getLayoutInflater().inflate(R.layout.add_admin_dialog, null);
+        View view = getLayoutInflater().inflate(R.layout.add_product_dialog, null);
         final EditText input = (EditText) view.findViewById(R.id.edit_text_email);
         ((TextInputLayout) view.findViewById(R.id.text_input_layout)).setHint("Product Name");
         ((TextView) view.findViewById(R.id.title)).setText("Add Product");
@@ -304,36 +330,28 @@ public class MainActivity extends AppCompatActivity {
         dialog.setContentView(view);
         dialog.show();
 
-        Toast.makeText(this, "Product name must not contain spaces!", Toast.LENGTH_LONG).show();
-
         dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
 
     }
 
     private void makeAdmin() {
-        final Dialog dialog = new Dialog(this);
-        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
-        View view = getLayoutInflater().inflate(R.layout.add_admin_dialog, null);
-        final EditText input = (EditText) view.findViewById(R.id.edit_text_email);
-        ((TextInputLayout) view.findViewById(R.id.text_input_layout)).setHint("Email");
-        view.findViewById(R.id.bu_cancel).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                dialog.dismiss();
-            }
-        });
-        view.findViewById(R.id.bu_ok).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                new MakeAdmin().execute(input.getText().toString());
-                dialog.dismiss();
-            }
-        });
-        dialog.setContentView(view);
-        dialog.show();
+        if (ServiceHandler.isOnline(this)) {
+            final Dialog dialog = new Dialog(this);
+            dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+            View view = getLayoutInflater().inflate(R.layout.make_admin_dialog, null);
+            new GetNonAdminEmails(dialog, view).execute();
+            view.findViewById(R.id.bu_cancel).setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    dialog.dismiss();
+                }
+            });
+            dialog.setContentView(view);
+            dialog.show();
 
-        dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-
+            dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        } else
+            noConnectionAlert();
     }
 
     private void logout() {
@@ -389,7 +407,7 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    private class GetEntries extends AsyncTask<Void, Void, Void> {
+    private class GetEntries extends AsyncTask<Void, Void, String> {
 
         @Override
         protected void onPreExecute() {
@@ -403,13 +421,13 @@ public class MainActivity extends AppCompatActivity {
         }
 
         @Override
-        protected Void doInBackground(Void... params) {
-            String response;
+        protected String doInBackground(Void... params) {
+            String dataString = "";
             // Get json from server
             try {
                 HashMap<String, String> postParams = new HashMap<>();
                 postParams.put(Constants.GET_ENTRIES, "50");
-                response = ServiceHandler.performPostCall(Constants.URL, postParams);
+                String response = ServiceHandler.performPostCall(Constants.URL, postParams);
 
                 Log.d(TAG, "Response: " + response);
 
@@ -420,46 +438,30 @@ public class MainActivity extends AppCompatActivity {
                     cancel(true);
                 } else {
                     // Success
-                    mEntries = parseJsonEntries(MainActivity.this, returnedObject.getString(Constants.DATA));
-
-                    if (mEntries.size() > 1) { // add graph and load the rest of the list
-
-                        mEntries.add(0,
-                                new EntriesRecyclerViewAdapter.EntriesRecyclerItem(
-                                        EntriesRecyclerViewAdapter.VIEW_GRAPH)
-                        );
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                mAdapter.updateEntries(mEntries);
-                            }
-                        });
-                        mEntries.get(0).addDataPoints(getDataPoints(mEntries));
-
-                        // mEntries.add(0, new EntriesRecyclerViewAdapter.EntriesRecyclerItem(getDataPoints(mEntries)));
-                    }
+                    dataString = returnedObject.getString(Constants.DATA);
+                    CachedData.save(MainActivity.this, dataString);
                 }
             } catch (Exception e) {
                 e.printStackTrace();
                 this.cancel(true);
             }
-            return null;
+            return dataString;
         }
 
         @Override
         protected void onCancelled() {
             super.onCancelled();
             mSwipeRefresh.setRefreshing(false);
-            snackbar("Could not load data.");
+            snackbar("Could not update data. Saved data loaded.");
+            computeAndUpdateUI(CachedData.load(MainActivity.this));
+
         }
 
         @Override
-        protected void onPostExecute(Void aVoid) {
-            super.onPostExecute(aVoid);
-            mAdapter.updateEntries(mEntries);
+        protected void onPostExecute(String s) {
+            super.onPostExecute(s);
             mSwipeRefresh.setRefreshing(false);
-            if (!(mEntries.size() > 0))
-                mFillerNothingHere.setVisibility(View.VISIBLE);
+            computeAndUpdateUI(s);
             if (!firstLoad)
                 snackbar("Successfully updated.");
             firstLoad = !firstLoad;
@@ -472,6 +474,35 @@ public class MainActivity extends AppCompatActivity {
                 .setMessage("Please check your internet connection and try again.")
                 .setPositiveButton("OK", null)
                 .show();
+    }
+
+    private void computeAndUpdateUI(final String s) {
+        new Thread() {
+            @Override
+            public void run() {
+                try {
+                    mEntries = parseJsonEntries(MainActivity.this, s);
+
+                    if (mEntries.size() > 1) { // add graph and load the rest of the list
+                        mEntries.add(0,
+                                new EntriesRecyclerViewAdapter.EntriesRecyclerItem(
+                                        EntriesRecyclerViewAdapter.VIEW_GRAPH)
+                        );
+                        mEntries.get(0).addDataPoints(getDataPoints(mEntries));
+                    }
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            mAdapter.updateEntries(mEntries);
+                            if (!(mEntries.size() > 0))
+                                mFillerNothingHere.setVisibility(View.VISIBLE);
+                        }
+                    });
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }.start();
     }
 
     @NonNull
@@ -527,6 +558,7 @@ public class MainActivity extends AppCompatActivity {
             }
         DataPoint[] orderDataPoints = new DataPoint[numOrderPoints];
         DataPoint[] returnDataPoints = new DataPoint[numReturnPoints];
+        DataPoint[] netDataPoints = new DataPoint[numOrderPoints];
 
         try {
             int orderCount = 0, returnCount = 0;
@@ -534,25 +566,30 @@ public class MainActivity extends AppCompatActivity {
                 EntriesRecyclerViewAdapter.EntriesRecyclerItem entryItem = entries.get(i);
                 if (entryItem.viewType == EntriesRecyclerViewAdapter.VIEW_ENTRY) {
                     Entry e = entryItem.entry;
-                    if (e.hasOrders)
-                        orderDataPoints[orderCount++] = new DataPoint(
-                                serverFormat.parse(e.getFromOrder("date")),
-                                Integer.parseInt(e.getFromOrder("total")));
-                    if (e.hasReturns)
+                    if (e.hasOrders) {
+                        int order = Integer.parseInt(e.getFromOrder("total"));
+                        Date date = serverFormat.parse(e.getFromOrder("date"));
+                        orderDataPoints[orderCount] = new DataPoint(date, order);
+                        int net = order - (e.hasReturns ? Integer.parseInt(e.getFromReturn("total")) : 0);
+                        netDataPoints[orderCount++] = new DataPoint(date, net);
+                    }
+                    if (e.hasReturns) {
                         returnDataPoints[returnCount++] = new DataPoint(
-                                serverFormat.parse(e.getFromOrder("date")),
-                                Integer.parseInt(e.getFromOrder("total")));
+                                serverFormat.parse(e.getFromReturn("date")),
+                                Integer.parseInt(e.getFromReturn("total")));
+                    }
                 }
             }
             dataPointsMap.put(Constants.JSON_PROD_ORDERS, orderDataPoints);
             dataPointsMap.put(Constants.JSON_PROD_RETURNS, returnDataPoints);
+            dataPointsMap.put("net", netDataPoints);
         } catch (JSONException | ParseException e) {
             e.printStackTrace();
         }
         return dataPointsMap;
     }
 
-    public class MakeAdmin extends AsyncTask<String, Void, Void> {
+    public class MakeAdmin extends AsyncTask<ArrayList<String>, Void, Void> {
 
         @Override
         protected void onPreExecute() {
@@ -561,13 +598,14 @@ public class MainActivity extends AppCompatActivity {
         }
 
         @Override
-        protected Void doInBackground(String... params) {
+        protected Void doInBackground(ArrayList<String>... params) {
             String response = "";
             // Get json from server
             try {
                 HashMap<String, String> postParams = new HashMap<>();
                 postParams.put(Constants.USER_OP, Constants.MAKE_ADMIN);
-                postParams.put("email", params[0].trim());
+                JSONArray jsonArray = new JSONArray(params[0]);
+                postParams.put("email", jsonArray.toString());
                 response = ServiceHandler.performPostCall(Constants.URL, postParams);
 
                 Log.d(TAG, "Response: " + response);
@@ -595,6 +633,82 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    class GetNonAdminEmails extends AsyncTask<Void, Void, ArrayList<String>> {
+        Dialog dialog;
+        View view;
+
+        public GetNonAdminEmails(Dialog dialog, View view) {
+            this.dialog = dialog;
+            this.view = view;
+        }
+
+        @Override
+        protected ArrayList<String> doInBackground(Void... params) {
+            String response = "";
+            ArrayList<String> arrayList = new ArrayList<>();
+            // Get json from server
+            try {
+                HashMap<String, String> postParams = new HashMap<>();
+                postParams.put("get_emails_not_admin", "");
+                response = ServiceHandler.performPostCall(Constants.URL, postParams);
+
+                Log.d(TAG, "Response: " + response);
+                JSONObject returnObject = new JSONObject(response);
+                if (!(returnObject.getBoolean(Constants.SUCCESS)))
+                    this.cancel(true);
+                else {
+                    JSONArray jsonArray = returnObject.getJSONArray("data");
+                    for (int i = 0; i < jsonArray.length(); i++) {
+                        arrayList.add(jsonArray.getString(i));
+                    }
+                }
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                this.cancel(true);
+            }
+            return arrayList;
+        }
+
+        @Override
+        protected void onCancelled() {
+            super.onCancelled();
+            dialog.dismiss();
+            new AlertDialog.Builder(MainActivity.this).setTitle("Oops...")
+                    .setMessage("There was an error getting the list of users.")
+                    .setPositiveButton("OK", null)
+                    .show();
+        }
+
+        @Override
+        protected void onPostExecute(ArrayList<String> arrayList) {
+            if (arrayList.isEmpty()) {
+                dialog.dismiss();
+                new AlertDialog.Builder(MainActivity.this).setTitle("No Users Found")
+                        .setMessage("All available users already have admin privileges.")
+                        .setPositiveButton("OK", null)
+                        .show();
+                return;
+            }
+            final MakeAdminAdapter adapter = new MakeAdminAdapter(arrayList, MainActivity.this);
+            ListView listView = (ListView) view.findViewById(R.id.check_list_view);
+            listView.setAdapter(adapter);
+            view.findViewById(R.id.progress_bar).setVisibility(View.GONE);
+
+            view.findViewById(R.id.bu_ok).setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    ArrayList<String> emails = adapter.getEmailsToSend();
+                    if (emails.size() == 0) {
+                        Toast.makeText(MainActivity.this, "No emails selected.", Toast.LENGTH_LONG).show();
+                    } else {
+                        new MakeAdmin().execute(emails);
+                    }
+                    dialog.dismiss();
+                }
+            });
+        }
+    }
 
     public void snackbar(String messege) {
         Snackbar.make(findViewById(R.id.coordinator_layout), messege, Snackbar.LENGTH_LONG).show();
